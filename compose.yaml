@@ -12,7 +12,9 @@ services:
       ADMIN_USERNAME: easysub-admin
       ADMIN_PASSWORD: replace-with-a-long-unique-password
       ADMIN_EMAIL: admin@example.com
-      # Keep this value stable after first start; it signs JWTs and encrypts stored secrets.
+      # Generate once, then keep it stable. Linux/macOS: openssl rand -hex 32
+      # Windows PowerShell: [Convert]::ToHexString((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+      # JWT_SECRET signs JWTs and encrypts stored secrets; changing it invalidates sessions and encrypted credentials.
       JWT_SECRET: replace-with-a-long-random-secret
       MCP_ENABLED: "true"
     volumes:

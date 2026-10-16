@@ -53,7 +53,7 @@ On an uninitialized database, EasySub creates the administrator account from env
 
 If `JWT_SECRET` is omitted, EasySub generates a cryptographically random secret and stores it as `DATA_DIR/jwt_secret`. This is safe as long as the whole `DATA_DIR` is persisted. Set an explicit, long random `JWT_SECRET` when managing secrets outside the container. **Do not change it after users have started using the application**: existing login tokens and encrypted WebDAV/notification secrets will no longer be readable.
 
-The included [`compose.yaml`](compose.yaml) exposes these variables directly. Before running it, replace at least these placeholder values:
+The included [`compose.yaml`](compose.yaml) documents the generation commands immediately above `JWT_SECRET` and exposes these variables directly. Before running it, replace at least these placeholder values:
 
 ```yaml
 ADMIN_USERNAME: easysub-admin
