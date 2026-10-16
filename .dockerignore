@@ -1,0 +1,24 @@
+.git
+.github
+.claude
+.vscode
+.idea
+
+# Local persistent state and generated output
+data
+web/dist
+frontend/dist
+frontend/node_modules
+
+# Host binaries and logs
+easysub
+easysub.exe
+*.log
+.env
+
+# Documentation and editor artifacts not required for the image build
+docs
+README.md
+CODE_OF_CONDUCT.md
+LICENSE
+Caddyfile

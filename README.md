@@ -20,6 +20,26 @@ DATA_DIR/easysub.db
 
 Use the built-in JSON export/import functionality for portable backups. EasySub also supports local scheduled backups and WebDAV backups/restores. Keep an offline backup before moving or replacing the data directory.
 
+## Docker deployment
+
+GitHub Actions publishes a multi-architecture Docker image after every successful push to `main`:
+
+```bash
+docker pull ghcr.io/chunyu-zhou/easysub:latest
+```
+
+For server deployment, update `your-domain.com` in [Caddyfile](Caddyfile), then start the included Compose stack:
+
+```bash
+docker compose up -d
+```
+
+The `easysub_data` volume is persistent and holds the embedded SQLite database. Do not remove it unless you intentionally want to erase application data. Every `main` push also publishes `latest`, `main`, and a `sha-<commit>` image tag; version tags such as `v2.0.0` publish matching version tags.
+
+## Development status
+
+The Docker workflow is configured to publish only after the repository has a runnable Go entry point and complete HTTP route registration. At present, [internal/server/server.go](internal/server/server.go) references a missing `routes()` method and there is no `cmd/easysub/main.go`, so the first workflow run will correctly fail rather than publish a nonfunctional image.
+
 ## Upstream attribution
 
 This project is based on EasySub by [suyijun8182/easysub](https://github.com/suyijun8182/easysub). The upstream MIT license is retained in [LICENSE](LICENSE).
