@@ -1,0 +1,10 @@
+/data/
+/dist/
+/easysub
+/easysub.exe
+/web/dist/*
+!/web/dist/.gitkeep
+frontend/node_modules/
+frontend/dist/
+.env
+*.log
