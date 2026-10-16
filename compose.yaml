@@ -11,21 +11,5 @@ services:
     ports:
       - "8000:8000"
 
-  caddy:
-    image: caddy:2.10-alpine
-    container_name: easysub-caddy
-    restart: unless-stopped
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-
 volumes:
   easysub_data:
-  caddy_data:
-  caddy_config:

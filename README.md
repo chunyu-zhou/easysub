@@ -28,13 +28,13 @@ GitHub Actions publishes a multi-architecture Docker image after every successfu
 docker pull ghcr.io/chunyu-zhou/easysub:latest
 ```
 
-For server deployment, update `your-domain.com` in [Caddyfile](Caddyfile), then start the included Compose stack:
+Start the included Compose stack:
 
 ```bash
 docker compose up -d
 ```
 
-The `easysub_data` volume is persistent and holds the embedded SQLite database. Do not remove it unless you intentionally want to erase application data. Every `main` push also publishes `latest`, `main`, and a `sha-<commit>` image tag; version tags such as `v2.0.0` publish matching version tags.
+The application is available directly at `http://your-server-ip:8000`. The `easysub_data` volume is persistent and holds the embedded SQLite database. Do not remove it unless you intentionally want to erase application data. Every `main` push also publishes `latest`, `main`, and a `sha-<commit>` image tag; version tags such as `v2.0.0` publish matching version tags.
 
 ## Application API and MCP
 
