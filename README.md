@@ -36,9 +36,15 @@ docker compose up -d
 
 The `easysub_data` volume is persistent and holds the embedded SQLite database. Do not remove it unless you intentionally want to erase application data. Every `main` push also publishes `latest`, `main`, and a `sha-<commit>` image tag; version tags such as `v2.0.0` publish matching version tags.
 
-## Development status
+## Application API and MCP
 
-The Docker workflow is configured to publish only after the repository has a runnable Go entry point and complete HTTP route registration. At present, [internal/server/server.go](internal/server/server.go) references a missing `routes()` method and there is no `cmd/easysub/main.go`, so the first workflow run will correctly fail rather than publish a nonfunctional image.
+The Go service embeds the production Vue build and exposes the REST API under `/api`. Create an API token in **Settings → Security** and pass it with the following header:
+
+```text
+Authorization: Bearer <API_TOKEN>
+```
+
+The Streamable HTTP MCP endpoint is `/mcp`. It supports MCP initialization, tool discovery, and read-only tools for subscriptions, dashboard data, and currencies. The same bearer API token authenticates MCP requests.
 
 ## Upstream attribution
 
