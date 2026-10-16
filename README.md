@@ -53,20 +53,22 @@ On an uninitialized database, EasySub creates the administrator account from env
 
 If `JWT_SECRET` is omitted, EasySub generates a cryptographically random secret and stores it as `DATA_DIR/jwt_secret`. This is safe as long as the whole `DATA_DIR` is persisted. Set an explicit, long random `JWT_SECRET` when managing secrets outside the container. **Do not change it after users have started using the application**: existing login tokens and encrypted WebDAV/notification secrets will no longer be readable.
 
-Example production Compose override:
+The included [`compose.yaml`](compose.yaml) exposes these variables directly. Before running it, replace at least these placeholder values:
 
 ```yaml
-services:
-  app:
-    environment:
-      ADMIN_USERNAME: easysub-admin
-      ADMIN_PASSWORD: replace-with-a-long-unique-password
-      ADMIN_EMAIL: admin@example.com
-      JWT_SECRET: replace-with-a-long-random-secret
-      DATA_DIR: /app/data
+ADMIN_USERNAME: easysub-admin
+ADMIN_PASSWORD: replace-with-a-long-unique-password
+ADMIN_EMAIL: admin@example.com
+JWT_SECRET: replace-with-a-long-random-secret
 ```
 
-After signing in for the first time, change the administrator password under **Settings → Account**. For a public deployment, place the service behind a TLS-terminating reverse proxy or tunnel; the bundled Compose file intentionally exposes plain HTTP on port `8000` only.
+Generate a suitable JWT secret, for example:
+
+```bash
+openssl rand -hex 32
+```
+
+The Compose file persists `/app/data` in the `easysub_data` Docker volume, so the SQLite database and generated secret survive container recreation. After signing in for the first time, change the administrator password under **Settings → Account**. For a public deployment, place the service behind a TLS-terminating reverse proxy or tunnel; the bundled Compose file intentionally exposes plain HTTP on port `8000` only.
 
 ## Application API and MCP
 

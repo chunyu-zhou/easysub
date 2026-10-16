@@ -6,6 +6,15 @@ services:
     environment:
       TZ: Asia/Shanghai
       DATA_DIR: /app/data
+      SQLITE_PATH: easysub.db
+      LISTEN: :8000
+      # Set these before the first start. They only seed a newly created database.
+      ADMIN_USERNAME: easysub-admin
+      ADMIN_PASSWORD: replace-with-a-long-unique-password
+      ADMIN_EMAIL: admin@example.com
+      # Keep this value stable after first start; it signs JWTs and encrypts stored secrets.
+      JWT_SECRET: replace-with-a-long-random-secret
+      MCP_ENABLED: "true"
     volumes:
       - easysub_data:/app/data
     ports:
