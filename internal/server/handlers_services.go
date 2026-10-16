@@ -87,7 +87,9 @@ func (s *Server) importAllBackup(c *Ctx) (any, error) {
 	}
 	return result, nil
 }
-func (s *Server) listLocalBackups(*Ctx) (any, error) { return backup.ListLocal(), nil }
+func (s *Server) listLocalBackups(*Ctx) (any, error) {
+	return map[string]any{"keep": backup.LocalKeep, "files": backup.ListLocal()}, nil
+}
 func (s *Server) runLocalBackup(c *Ctx) (any, error) {
 	out, err := backup.RunLocalBackup(c.DB)
 	if err != nil {
