@@ -62,11 +62,25 @@ ADMIN_EMAIL: admin@example.com
 JWT_SECRET: replace-with-a-long-random-secret
 ```
 
-Generate a suitable JWT secret, for example:
+#### Generate `JWT_SECRET`
+
+`JWT_SECRET` must be a high-entropy, private, stable value. Generate it once, copy the complete output into `JWT_SECRET` in [`compose.yaml`](compose.yaml), and keep it in a password manager or secret-management system.
+
+On Linux, macOS, or inside a Docker-capable shell:
 
 ```bash
 openssl rand -hex 32
 ```
+
+On Windows PowerShell:
+
+```powershell
+[Convert]::ToHexString((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+Both commands generate 32 random bytes encoded as 64 hexadecimal characters. Do not use an ordinary password, an example value from documentation, or a value committed to a public repository.
+
+Do not rotate `JWT_SECRET` during normal upgrades. Changing it invalidates every active login token and makes existing encrypted WebDAV and notification credentials unreadable. If `JWT_SECRET` is intentionally omitted, EasySub instead generates and persists one at `DATA_DIR/jwt_secret`; this only remains safe when the complete data directory or Docker volume is retained.
 
 The Compose file persists `/app/data` in the `easysub_data` Docker volume, so the SQLite database and generated secret survive container recreation. After signing in for the first time, change the administrator password under **Settings → Account**. For a public deployment, place the service behind a TLS-terminating reverse proxy or tunnel; the bundled Compose file intentionally exposes plain HTTP on port `8000` only.
 
