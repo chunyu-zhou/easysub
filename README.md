@@ -1,115 +1,318 @@
-# EasySub
+<div align="center">
 
-EasySub is a self-hosted subscription, renewal, and account-retention manager.
+# 省心订阅 EasySub
 
-## Storage
+**自托管的订阅 / 续费 / 保号管理系统：集中记录服务订阅、续费日期和付款方式，通过多渠道提醒避免订阅过期或号码掉号。**
 
-EasySub uses an **embedded SQLite database by default**. No MySQL server, database account, browser setup wizard, connection check, or manual initialization is required.
-
-On every startup, the application automatically creates the data directory when needed, opens the SQLite database, applies migrations, and seeds the initial administrator account and built-in defaults. On first start, it creates the database at:
-
-```text
-DATA_DIR/easysub.db
-```
-
-`DATA_DIR` defaults to `data`. To use a different SQLite filename or an absolute database path, set `SQLITE_PATH`. This is an optional deployment setting, not an installation step: after the container starts, open the application directly and sign in.
-
-> Persist or mount the entire `DATA_DIR` in production. It contains the database, uploaded icons, encryption material, database configuration compatibility metadata, and local backups.
-
-## Backup
-
-Use the built-in JSON export/import functionality for portable backups. EasySub also supports local scheduled backups and WebDAV backups/restores. Keep an offline backup before moving or replacing the data directory.
-
-## Docker deployment
-
-GitHub Actions publishes a multi-architecture Docker image after every successful push to `main`:
+[![License](https://img.shields.io/github/license/chunyu-zhou/easysub?color=blue)](./LICENSE)
+[![GHCR](https://img.shields.io/badge/GHCR-ghcr.io%2Fchunyu--zhou%2Feasysub-2496ED?logo=github)](https://github.com/chunyu-zhou/easysub/pkgs/container/easysub)
+[![Latest commit](https://img.shields.io/github/last-commit/chunyu-zhou/easysub/main?logo=github)](https://github.com/chunyu-zhou/easysub/commits/main)
 
 ```bash
-docker pull ghcr.io/chunyu-zhou/easysub:latest
+docker run -d --name easysub \
+  -p 8842:8000 \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=replace-with-a-long-unique-password \
+  -e ADMIN_EMAIL=admin@example.com \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
+  -v easysub_data:/app/data \
+  --restart unless-stopped \
+  ghcr.io/chunyu-zhou/easysub:latest
 ```
 
-Start the included Compose stack:
+</div>
+
+## ✨ 功能特性
+
+| 分类 | 功能 |
+| --- | --- |
+| 👥 **多用户与权限** | JWT 登录、管理员 / 普通用户分层、数据按用户隔离、可开放注册，并可启用管理员审核。 |
+| 💳 **订阅管理** | 支持周期订阅和一次性买断；自动计算下次续费日期；支持提前续费或按原到期日续费。 |
+| 📱 **保号场景** | 续费时可从当前日期重新计算周期，适用于 SIM 卡保号、流量包和运营商套餐。 |
+| 💰 **多货币** | 内置常用货币、中英文名称与符号；支持用户自行增删货币、设置手动汇率和基准货币。 |
+| 💳 **付款方式** | 每位用户独立管理付款方式，可记录图标、账号和备注。 |
+| 🔔 **通知提醒** | 支持 Telegram、飞书、QQ、Bark、邮件、Pushplus、Server 酱、企业微信、钉钉、Discord、Slack、ntfy、Gotify 和 Webhook 等渠道；支持到期提醒、免打扰时段和每周汇总。 |
+| 🧪 **日期追踪** | 支持试用结束、取消截止日和付款卡有效期提醒。 |
+| 📊 **仪表盘与报表** | 月度 / 年度支出、分类支出、排行、即将续费、过期订阅、一次性购买与 CSV 导出。 |
+| 🗓️ **日历** | 提供日历视图和令牌保护的 `.ics` 订阅地址，可添加到 Apple、Google 或 Outlook 日历。 |
+| 📚 **服务图标库** | 内置常见服务图标和官网；未缓存图标会由浏览器直接加载，后台只使用有界队列缓存，不会因远端图标不可访问而耗尽后端请求资源。 |
+| 💾 **备份恢复** | 单用户 JSON 导入 / 导出、管理员整站备份与恢复、每日本地自动备份、WebDAV 备份 / 恢复及 CSV 导入 / 导出。 |
+| 🔐 **安全与集成** | API Token、加密存储 WebDAV 与通知密钥、REST API、Streamable HTTP MCP 端点。 |
+| 🌍 **体验** | 中文 / English / Русский，多主题，响应式 Web 界面和 PWA 前端资源。 |
+
+> 本分支使用**内置 SQLite**，不需要 MySQL、数据库连接向导或网页初始化步骤。
+
+---
+
+## 🚀 快速开始
+
+镜像由 GitHub Actions 在每次推送 `main` 后自动构建，并发布到 GitHub Container Registry：
+
+```text
+ghcr.io/chunyu-zhou/easysub:latest
+```
+
+### 方式 A：Docker Compose（推荐）
+
+1. 下载 [`compose.yaml`](compose.yaml)。
+2. 编辑其中的 `ADMIN_*` 和 `JWT_SECRET` 占位值。
+3. 启动服务：
 
 ```bash
 docker compose up -d
 ```
 
-The application is available directly at `http://your-server-ip:8000`. The `easysub_data` volume is persistent and holds the embedded SQLite database. Do not remove it unless you intentionally want to erase application data. Every `main` push also publishes `latest`, `main`, and a `sha-<commit>` image tag; version tags such as `v2.0.0` publish matching version tags.
+4. 浏览器访问：
 
-### First-run account and security configuration
-
-On an uninitialized database, EasySub creates the administrator account from environment variables. **Set these values before the first start.** Changing `ADMIN_USERNAME`, `ADMIN_PASSWORD`, or `ADMIN_EMAIL` later does not modify an existing account.
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ADMIN_USERNAME` | `admin` | First administrator username |
-| `ADMIN_PASSWORD` | `admin123` | First administrator password — change this in production |
-| `ADMIN_EMAIL` | `admin@example.com` | First administrator email address |
-| `JWT_SECRET` | generated and persisted | Secret used to sign access/refresh JWTs and encrypt stored secrets such as WebDAV credentials |
-| `DATA_DIR` | `data` | Persistent directory containing SQLite, uploaded icons, backups, and the generated JWT secret |
-| `SQLITE_PATH` | `easysub.db` | SQLite filename under `DATA_DIR`, or an absolute database path |
-| `LISTEN` | `:8000` | HTTP listener address |
-| `MCP_ENABLED` | `true` | Enables the `/mcp` endpoint |
-
-If `JWT_SECRET` is omitted, EasySub generates a cryptographically random secret and stores it as `DATA_DIR/jwt_secret`. This is safe as long as the whole `DATA_DIR` is persisted. Set an explicit, long random `JWT_SECRET` when managing secrets outside the container. **Do not change it after users have started using the application**: existing login tokens and encrypted WebDAV/notification secrets will no longer be readable.
-
-The included [`compose.yaml`](compose.yaml) documents the generation commands immediately above `JWT_SECRET` and exposes these variables directly. Before running it, replace at least these placeholder values:
-
-```yaml
-ADMIN_USERNAME: easysub-admin
-ADMIN_PASSWORD: replace-with-a-long-unique-password
-ADMIN_EMAIL: admin@example.com
-JWT_SECRET: replace-with-a-long-random-secret
+```text
+http://<服务器 IP>:8000
 ```
 
-#### Generate `JWT_SECRET`
+### 方式 B：docker run
 
-`JWT_SECRET` must be a high-entropy, private, stable value. Generate it once, copy the complete output into `JWT_SECRET` in [`compose.yaml`](compose.yaml), and keep it in a password manager or secret-management system.
+```bash
+docker run -d --name easysub \
+  -p 8842:8000 \
+  -e TZ=Asia/Shanghai \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=replace-with-a-long-unique-password \
+  -e ADMIN_EMAIL=admin@example.com \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
+  -v easysub_data:/app/data \
+  --restart unless-stopped \
+  ghcr.io/chunyu-zhou/easysub:latest
+```
 
-On Linux, macOS, or inside a Docker-capable shell:
+随后访问：
+
+```text
+http://<服务器 IP>:8842
+```
+
+### 首次启动行为
+
+程序启动时会自动完成以下步骤：
+
+1. 创建 `DATA_DIR`（默认 `data` 或容器内 `/app/data`）；
+2. 创建或打开 SQLite 数据库；
+3. 自动执行数据库迁移；
+4. 写入内置分类、默认货币和默认付款方式；
+5. 按 `ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_EMAIL` 创建首个管理员账号。
+
+启动后直接使用管理员账号登录，**不会出现数据库安装或连接配置页面**。
+
+---
+
+## ⚙️ 配置说明
+
+### 关键环境变量
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `ADMIN_USERNAME` | `admin` | 首次创建的管理员用户名。 |
+| `ADMIN_PASSWORD` | `admin123` | 首次创建的管理员密码；生产环境必须修改。 |
+| `ADMIN_EMAIL` | `admin@example.com` | 首次创建的管理员邮箱。 |
+| `JWT_SECRET` | 自动生成并持久化 | 用于签发 JWT，并加密 WebDAV / 通知等敏感配置。生产环境推荐显式设置。 |
+| `DATA_DIR` | `data` | SQLite 数据库、图标、备份和自动生成 JWT 密钥的持久化目录。 |
+| `SQLITE_PATH` | `easysub.db` | SQLite 数据库文件名；相对路径位于 `DATA_DIR` 下，也可填写绝对路径。 |
+| `LISTEN` | `:8000` | HTTP 监听地址。 |
+| `TZ` | `Asia/Shanghai` | 时区，例如 `Asia/Shanghai`。 |
+| `MCP_ENABLED` | `true` | 是否启用 `/mcp`。 |
+| `REMINDER_SCAN_TIME` | `09:00` | 每日扫描续费和发送提醒的时间。 |
+| `REQUIRE_ADMIN_APPROVAL` | `false` | 新注册用户是否需要管理员审核。 |
+| `EXCHANGE_API_BASE` | `USD` | 汇率服务的系统基准货币。 |
+| `EXCHANGE_API_URL` | `https://open.er-api.com/v6/latest/` | 汇率数据源。 |
+
+> `ADMIN_*` 仅在数据库中尚不存在该管理员时生效。已经完成首次启动后，修改这些环境变量不会修改已有账号；请在网页 **设置 → 账户** 中修改密码和资料。
+
+### 生成 `JWT_SECRET`
+
+`JWT_SECRET` 必须是高随机性、私密且长期稳定的值。生成一次后，将**完整输出**填入 [`compose.yaml`](compose.yaml) 的 `JWT_SECRET`，并妥善保存到密码管理器或密钥管理系统。
+
+Linux、macOS 或具备 OpenSSL 的 Docker 主机：
 
 ```bash
 openssl rand -hex 32
 ```
 
-On Windows PowerShell:
+Windows PowerShell：
 
 ```powershell
 [Convert]::ToHexString((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
 ```
 
-Both commands generate 32 random bytes encoded as 64 hexadecimal characters. Do not use an ordinary password, an example value from documentation, or a value committed to a public repository.
+两种命令都会生成 32 个随机字节编码后的 64 位十六进制字符串。不要使用文档示例、普通密码或已经提交到公开仓库的值。
 
-Do not rotate `JWT_SECRET` during normal upgrades. Changing it invalidates every active login token and makes existing encrypted WebDAV and notification credentials unreadable. If `JWT_SECRET` is intentionally omitted, EasySub instead generates and persists one at `DATA_DIR/jwt_secret`; this only remains safe when the complete data directory or Docker volume is retained.
+**不要在正常升级时更换 `JWT_SECRET`。** 更换后，所有已登录会话将失效，已有的 WebDAV 和通知加密凭据也无法再解密。
 
-The Compose file persists `/app/data` in the `easysub_data` Docker volume, so the SQLite database and generated secret survive container recreation. The container runs as a non-root `easysub` user; if you replace the named volume with a host bind mount, ensure that the mounted directory is writable by the container user. After signing in for the first time, change the administrator password under **Settings → Account**. For a public deployment, place the service behind a TLS-terminating reverse proxy or tunnel; the bundled Compose file intentionally exposes plain HTTP on port `8000` only.
+如果未显式设置 `JWT_SECRET`，EasySub 会自动生成一个随机值并写入 `DATA_DIR/jwt_secret`。只要完整保留数据目录或 Docker 数据卷，这种方式也是安全的。
 
-### SQLite startup troubleshooting
+### SQLite 数据持久化
 
-EasySub does not have a database installation wizard. A `503` response that says **embedded SQLite is unavailable** means the application could not create, open, or migrate its local database. Inspect the container logs:
+EasySub 默认使用：
 
-```bash
-docker compose logs --tail=100 app
+```text
+DATA_DIR/easysub.db
 ```
 
-For the bundled named volume, recreate the application container without deleting the volume:
+请持久化整个 `DATA_DIR`，其中包含：
+
+- `easysub.db`、`easysub.db-wal`、`easysub.db-shm`；
+- `jwt_secret`（未设置 `JWT_SECRET` 时）；
+- 上传的图标；
+- 本地自动备份；
+- 运行所需的加密相关文件。
+
+默认 [`compose.yaml`](compose.yaml) 使用 Docker 命名卷 `easysub_data`，推荐保持此方式。如果改用宿主机目录挂载，例如：
+
+```yaml
+volumes:
+  - /volume1/docker/easysub/data:/app/data
+```
+
+该目录必须可被容器内的 `easysub` 用户写入。若日志出现 `unable to open database file` 或 `permission denied`，请修复宿主机目录权限后重建容器。
+
+---
+
+## 🔄 升级
+
+数据存储在 `/app/data` 对应的持久化目录或卷中。升级时只更新镜像，不要删除该数据目录或卷。
+
+使用 Compose：
 
 ```bash
 docker compose pull && docker compose up -d --force-recreate
 ```
 
-Do **not** run `docker compose down -v` unless intentionally deleting every subscription, backup, uploaded icon, and generated secret. If a host directory is mounted instead of `easysub_data`, correct its write permissions, then recreate the container.
+使用 `docker run`：
 
-## Application API and MCP
+```bash
+docker pull ghcr.io/chunyu-zhou/easysub:latest
+```
 
-The Go service embeds the production Vue build and exposes the REST API under `/api`. Create an API token in **Settings → Security** and pass it with the following header:
+然后以与原来相同的 `-v easysub_data:/app/data` 和环境变量重新创建容器。
+
+> 升级前建议在网页 **设置 → 数据备份** 导出 JSON 备份。管理员还可以导出整站备份。
+
+**不要执行以下命令，除非明确要删除全部数据：**
+
+```bash
+docker compose down -v
+```
+
+---
+
+## 📖 使用要点
+
+- **订阅与续费**：在“订阅”页面记录名称、金额、周期、下次续费日、分类、付款方式、网址和备注；可选择从今天或原到期日计算下一周期。
+- **货币和付款方式**：在“设置”中维护自己的货币、中文名称、符号、手动汇率，以及带账号和备注的付款方式。
+- **通知**：在“设置 → 通知”中配置渠道并执行测试；可设置提醒提前天数、免打扰时段和每周汇总。
+- **WebDAV**：在“设置 → WebDAV”保存地址、用户名、密码和远程目录；可测试、备份、查看、删除和恢复远程 JSON 备份。
+- **备份**：常规用户可以导出 / 导入自己的数据；管理员可执行整站备份和恢复。
+- **日历**：在“设置 → 日历”获取 `.ics` 地址，添加到第三方日历应用。
+- **API Token**：在“设置 → 安全”创建 API Token。令牌只会在创建时完整显示一次，请立即安全保存。
+
+---
+
+## 🔌 REST API 与 MCP
+
+应用提供 REST API，API 基础路径为 `/api`。使用 API Token 或登录访问令牌进行认证：
 
 ```text
 Authorization: Bearer <API_TOKEN>
 ```
 
-The Streamable HTTP MCP endpoint is `/mcp`. It supports MCP initialization, tool discovery, and read-only tools for subscriptions, dashboard data, and currencies. The same bearer API token authenticates MCP requests.
+常用接口包括：
 
-## Upstream attribution
+| 分类 | 示例接口 |
+| --- | --- |
+| 订阅 | `GET/POST /api/subscriptions`、`PUT/DELETE /api/subscriptions/{id}`、`POST /api/subscriptions/{id}/renew` |
+| 货币 | `/api/currencies`、`/api/currencies/catalog`、`/api/currencies/rate-table` |
+| 付款方式 | `/api/payment-methods` |
+| 报表 | `/api/dashboard`、`/api/reports/insights`、`/api/reports/export.csv` |
+| 备份 | `/api/backup/export`、`/api/backup/import`、`/api/webdav/*` |
+| 文档 | `/api/docs` |
 
-This project is based on EasySub by [suyijun8182/easysub](https://github.com/suyijun8182/easysub). The upstream MIT license is retained in [LICENSE](LICENSE).
+MCP 使用 Streamable HTTP 端点：
+
+```text
+http://<服务器 IP>:8000/mcp
+```
+
+同样传入 `Authorization: Bearer <API_TOKEN>`。当前 MCP 提供只读的订阅列表、仪表盘和货币查询工具。
+
+---
+
+## ❓ 常见问题
+
+<details>
+<summary><b>提示 “embedded SQLite is unavailable” 或无法登录？</b></summary>
+
+SQLite 无法创建、打开或迁移。先查看容器日志：
+
+```bash
+docker compose logs --tail=100 app
+```
+
+如果使用默认 Docker 命名卷，可安全重建应用容器（不会删除数据卷）：
+
+```bash
+docker compose pull && docker compose up -d --force-recreate
+```
+
+如果使用宿主机目录挂载，请确认该目录可被容器用户写入。不要删除 `/app/data` 或执行 `docker compose down -v`，除非确认要清空所有数据。
+</details>
+
+<details>
+<summary><b>为什么修改 ADMIN_PASSWORD 后无法用新密码登录？</b></summary>
+
+`ADMIN_*` 只用于首次创建管理员。数据库已有管理员后，环境变量不会覆盖账号密码。请使用原密码登录后在“设置 → 账户”中修改；如原密码遗失，应先备份数据，再通过受控方式重置数据库中的账号密码。
+</details>
+
+<details>
+<summary><b>升级后会不会丢失 SQLite 数据？</b></summary>
+
+只要保留 `/app/data` 对应的 Docker 卷或宿主机目录，升级只会自动执行兼容迁移，不会删除数据。升级前仍建议导出 JSON 备份。
+</details>
+
+<details>
+<summary><b>支持 HTTPS 吗？</b></summary>
+
+EasySub 直接提供 HTTP 服务。需要 HTTPS 时，可在应用前使用现有的 Nginx、Traefik、Cloudflare Tunnel、NAS 反向代理或其他 TLS 终止方案。项目不再内置 Caddy。
+</details>
+
+---
+
+## 🧰 技术栈
+
+| 组件 | 技术 |
+| --- | --- |
+| 后端 | Go · GORM · SQLite · cron |
+| 前端 | Vue 3 · Vite · vue-i18n · Pinia |
+| 数据库 | 内置 SQLite（纯 Go 驱动） |
+| 部署 | Docker 多阶段构建 · GHCR 多架构镜像（linux/amd64、linux/arm64） |
+| 数据安全 | JWT · bcrypt · 加密存储敏感配置 |
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request。提交前请运行：
+
+```bash
+go test ./...
+```
+
+```bash
+cd frontend && npm run build
+```
+
+推送到 `main` 或创建 `v*` 标签后，GitHub Actions 会构建并发布 GHCR 多架构镜像。
+
+---
+
+## 📝 许可与致谢
+
+本项目采用 [MIT License](./LICENSE)。
+
+本项目基于 [suyijun8182/easysub](https://github.com/suyijun8182/easysub) 的 MIT 许可源码进行 Go / SQLite 改写；保留上游许可证，并感谢上游项目的设计与功能思路。
