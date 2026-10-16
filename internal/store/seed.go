@@ -70,6 +70,7 @@ var CurrencyCatalog = append(append([]CurrencyDef{}, DefaultCurrencies...), []Cu
 	{"MAD", "Moroccan Dirham", "摩洛哥迪拉姆", "د.م."},
 	{"MXN", "Mexican Peso", "墨西哥比索", "MX$"},
 	{"ARS", "Argentine Peso", "阿根廷比索", "AR$"},
+	{"BOB", "Bolivian Boliviano", "玻利维亚诺", "Bs."},
 	{"CLP", "Chilean Peso", "智利比索", "CL$"},
 	{"COP", "Colombian Peso", "哥伦比亚比索", "CO$"},
 	{"PEN", "Peruvian Sol", "秘鲁索尔", "S/"},
