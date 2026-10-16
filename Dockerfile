@@ -14,6 +14,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY internal/ ./internal/
 COPY cmd/ ./cmd/
+# The Go entrypoint imports easysub/web; copy its embed declaration before
+# placing the independently built frontend assets in the embedded dist path.
+COPY web/embed.go ./web/embed.go
 COPY --from=frontend-build /src/frontend/dist ./web/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags='-s -w' -o /out/easysub ./cmd/easysub
 
