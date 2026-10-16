@@ -26,6 +26,9 @@ RUN apk add --no-cache ca-certificates tzdata \
     && adduser -S -G easysub -h /app easysub
 WORKDIR /app
 COPY --from=backend-build /out/easysub /usr/local/bin/easysub
+# Pre-create the mount point with the runtime user's ownership. Docker copies this
+# ownership into a newly created named volume; compose.yaml also repairs older volumes.
+RUN mkdir -p /app/data && chown -R easysub:easysub /app
 USER easysub
 ENV LISTEN=:8000 \
     DATA_DIR=/app/data \
