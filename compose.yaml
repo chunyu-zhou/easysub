@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
+      # Persistent directory for SQLite, generated JWT secret, uploads, and backups.
+      # Do not mount a read-only host path here.
       DATA_DIR: /app/data
       SQLITE_PATH: easysub.db
       LISTEN: :8000

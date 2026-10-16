@@ -198,7 +198,10 @@ func (s *Server) handle(pattern string, lvl access, fn handlerFunc) {
 		if lvl >= withDB {
 			c.DB = store.DB()
 			if c.DB == nil {
-				writeErr(w, Err(503, "数据库尚未配置或暂时不可用，请稍后重试；若为首次安装请在安装向导中配置"))
+				// SQLite is always initialized locally at process startup. If this fails,
+				// the deployment's persistent directory is unreadable or invalid; there is
+				// no browser-side setup step that can repair it.
+				writeErr(w, Err(503, "embedded SQLite is unavailable; check the container logs and DATA_DIR permissions"))
 				return
 			}
 			c.DB = c.DB.WithContext(r.Context())

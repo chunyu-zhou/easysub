@@ -82,7 +82,23 @@ Both commands generate 32 random bytes encoded as 64 hexadecimal characters. Do 
 
 Do not rotate `JWT_SECRET` during normal upgrades. Changing it invalidates every active login token and makes existing encrypted WebDAV and notification credentials unreadable. If `JWT_SECRET` is intentionally omitted, EasySub instead generates and persists one at `DATA_DIR/jwt_secret`; this only remains safe when the complete data directory or Docker volume is retained.
 
-The Compose file persists `/app/data` in the `easysub_data` Docker volume, so the SQLite database and generated secret survive container recreation. After signing in for the first time, change the administrator password under **Settings → Account**. For a public deployment, place the service behind a TLS-terminating reverse proxy or tunnel; the bundled Compose file intentionally exposes plain HTTP on port `8000` only.
+The Compose file persists `/app/data` in the `easysub_data` Docker volume, so the SQLite database and generated secret survive container recreation. The container runs as a non-root `easysub` user; if you replace the named volume with a host bind mount, ensure that the mounted directory is writable by the container user. After signing in for the first time, change the administrator password under **Settings → Account**. For a public deployment, place the service behind a TLS-terminating reverse proxy or tunnel; the bundled Compose file intentionally exposes plain HTTP on port `8000` only.
+
+### SQLite startup troubleshooting
+
+EasySub does not have a database installation wizard. A `503` response that says **embedded SQLite is unavailable** means the application could not create, open, or migrate its local database. Inspect the container logs:
+
+```bash
+docker compose logs --tail=100 app
+```
+
+For the bundled named volume, recreate the application container without deleting the volume:
+
+```bash
+docker compose pull && docker compose up -d --force-recreate
+```
+
+Do **not** run `docker compose down -v` unless intentionally deleting every subscription, backup, uploaded icon, and generated secret. If a host directory is mounted instead of `easysub_data`, correct its write permissions, then recreate the container.
 
 ## Application API and MCP
 
