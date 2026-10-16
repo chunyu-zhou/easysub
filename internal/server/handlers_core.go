@@ -69,36 +69,6 @@ func (s *Server) ready(*Ctx) (any, error) {
 	return map[string]any{"status": "ready", "database": "sqlite"}, nil
 }
 
-func (s *Server) setupStatus(*Ctx) (any, error) {
-	return map[string]any{"configured": store.IsConfigured(), "driver": "sqlite", "path": config.C.SQLitePath}, nil
-}
-
-func (s *Server) setupTest(c *Ctx) (any, error) {
-	var in store.DBConfig
-	if err := c.Bind(&in); err != nil {
-		return nil, err
-	}
-	message, err := store.TestConnection(in)
-	if err != nil {
-		return nil, Err(422, "SQLite test failed: %v", err)
-	}
-	return map[string]any{"message": message}, nil
-}
-
-func (s *Server) setupSave(c *Ctx) (any, error) {
-	var in store.DBConfig
-	if err := c.Bind(&in); err != nil {
-		return nil, err
-	}
-	if err := store.SaveConfig(in); err != nil {
-		return nil, Err(500, "could not save SQLite configuration: %v", err)
-	}
-	if !store.ConnectSaved(true) {
-		return nil, Err(500, "could not initialize SQLite database")
-	}
-	return map[string]any{"status": "ok"}, nil
-}
-
 func tokenResponse(u *store.User) map[string]any {
 	return map[string]any{"access_token": secure.AccessToken(u.ID), "refresh_token": secure.RefreshToken(u.ID), "token_type": "bearer"}
 }

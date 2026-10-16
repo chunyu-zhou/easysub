@@ -4,15 +4,15 @@ EasySub is a self-hosted subscription, renewal, and account-retention manager.
 
 ## Storage
 
-EasySub uses an **embedded SQLite database**. No MySQL server, database account, or external database setup is required.
+EasySub uses an **embedded SQLite database by default**. No MySQL server, database account, browser setup wizard, connection check, or manual initialization is required.
 
-On first start, the application creates and migrates the database at:
+On every startup, the application automatically creates the data directory when needed, opens the SQLite database, applies migrations, and seeds the initial administrator account and built-in defaults. On first start, it creates the database at:
 
 ```text
 DATA_DIR/easysub.db
 ```
 
-`DATA_DIR` defaults to `data`. To use a different SQLite filename or an absolute database path, set `SQLITE_PATH`.
+`DATA_DIR` defaults to `data`. To use a different SQLite filename or an absolute database path, set `SQLITE_PATH`. This is an optional deployment setting, not an installation step: after the container starts, open the application directly and sign in.
 
 > Persist or mount the entire `DATA_DIR` in production. It contains the database, uploaded icons, encryption material, database configuration compatibility metadata, and local backups.
 

@@ -11,10 +11,6 @@ func (s *Server) routes() {
 	s.handle("GET /healthz", public, s.health)
 	s.handle("GET /readyz", withDB, s.ready)
 
-	s.handle("GET /api/setup/status", public, s.setupStatus)
-	s.handle("POST /api/setup/test", public, s.setupTest)
-	s.handle("POST /api/setup/save", public, s.setupSave)
-
 	s.handle("POST /api/auth/login", withDB, s.login)
 	s.handle("POST /api/auth/register", withDB, s.register)
 	s.handle("POST /api/auth/refresh", withDB, s.refresh)
