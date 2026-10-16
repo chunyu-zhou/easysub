@@ -142,6 +142,36 @@ const zh = {
     botOk: '机器人正常', botFail: '验证失败', testOk: '测试消息已发送', logs: '通知记录',
     rateTable: '常用货币汇率', rateTip: '1 单位货币兑换为 {base} 的当日金额', updatedAt: '更新于', noRates: '暂无汇率数据，请点击「刷新汇率」'
   },
+  mcp: {
+    title: 'API 与 MCP 集成',
+    tip: '使用 API Token 将 EasySub 接入脚本、自动化工具或 MCP 客户端。',
+    restBase: 'REST API 地址', docs: '查看 API 文档', disabled: '管理员已关闭 MCP 功能。',
+    endpoint: 'MCP 服务地址', transport: '传输方式：Streamable HTTP',
+    tokenHint: '请先在下方「安全」区域创建 API Token。', jsonCfg: 'MCP 客户端配置'
+  },
+  cur: {
+    title: '货币管理',
+    tip: '维护用于订阅记录和换算的货币；系统基准货币为 {base}。',
+    restore: '恢复默认货币', restored: '已恢复 {n} 种默认货币',
+    nameZh: '中文名称', nameEn: '英文名称', symbol: '货币符号',
+    manualRate: '1 {code} = ? {base}', manualPh: '留空则使用自动汇率',
+    isBase: '基准货币', custom: '自定义', up: '上移', down: '下移',
+    addFromCatalog: '从内置货币中添加', searchPh: '搜索货币代码、中文名或英文名',
+    pick: '请选择要添加的货币', allAdded: '所有内置货币均已添加',
+    add: '添加', addCustom: '添加自定义货币', code: '货币代码',
+    added: '已添加货币 {code}', deleted: '已删除货币 {code}',
+    deleteConfirm: '确定删除货币 {code} 吗？'
+  },
+  pm: {
+    title: '付款方式管理',
+    tip: '付款方式仅供当前账号使用，可记录账号和备注。',
+    restore: '恢复默认付款方式', restored: '已恢复 {n} 种默认付款方式',
+    none: '暂无付款方式', add: '添加付款方式', edit: '编辑付款方式',
+    name: '名称', namePh: '例如：招商银行信用卡', icon: '图标',
+    account: '账号', accountPh: "例如：尾号 1234 / user{'@'}example.com",
+    note: '备注', notePh: '例如：账单日每月 10 日',
+    deleted: '付款方式已删除', deleteConfirm: '确定删除付款方式「{name}」吗？'
+  },
   backup: {
     title: '数据备份与恢复',
     tip: '把你的订阅及自定义分类/付款方式等导出为 JSON 离线保存；重新部署后导入即可恢复，避免数据丢失。',
@@ -328,6 +358,36 @@ const en = {
     botOk: 'Bot OK', botFail: 'Verify failed', testOk: 'Test sent', logs: 'Logs',
     rateTable: 'Currency rates', rateTip: 'Today value of 1 unit in {base}', updatedAt: 'Updated', noRates: 'No rate data, click "Refresh rates"'
   },
+  mcp: {
+    title: 'API & MCP Integration',
+    tip: 'Use an API token to connect EasySub with scripts, automation tools, or an MCP client.',
+    restBase: 'REST API address', docs: 'View API documentation', disabled: 'An administrator has disabled MCP.',
+    endpoint: 'MCP endpoint', transport: 'Transport: Streamable HTTP',
+    tokenHint: 'Create an API token in the Security section below first.', jsonCfg: 'MCP client configuration'
+  },
+  cur: {
+    title: 'Currency Management',
+    tip: 'Manage currencies used for subscription records and conversion; the system base currency is {base}.',
+    restore: 'Restore default currencies', restored: 'Restored {n} default currencies',
+    nameZh: 'Chinese name', nameEn: 'English name', symbol: 'Currency symbol',
+    manualRate: '1 {code} = ? {base}', manualPh: 'Leave blank to use the automatic rate',
+    isBase: 'Base currency', custom: 'Custom', up: 'Move up', down: 'Move down',
+    addFromCatalog: 'Add from built-in currencies', searchPh: 'Search by code, Chinese name, or English name',
+    pick: 'Select a currency to add', allAdded: 'All built-in currencies have been added',
+    add: 'Add', addCustom: 'Add custom currency', code: 'Currency code',
+    added: 'Added currency {code}', deleted: 'Deleted currency {code}',
+    deleteConfirm: 'Delete currency {code}?'
+  },
+  pm: {
+    title: 'Payment Method Management',
+    tip: 'Payment methods are private to this account and can include an account and note.',
+    restore: 'Restore default payment methods', restored: 'Restored {n} default payment methods',
+    none: 'No payment methods yet', add: 'Add payment method', edit: 'Edit payment method',
+    name: 'Name', namePh: 'e.g. Visa credit card', icon: 'Icon',
+    account: 'Account', accountPh: "e.g. ending 1234 / user{'@'}example.com",
+    note: 'Note', notePh: 'e.g. Statement date: the 10th of every month',
+    deleted: 'Payment method deleted', deleteConfirm: 'Delete payment method "{name}"?'
+  },
   backup: {
     title: 'Backup & Restore',
     tip: 'Export your subscriptions and custom categories/payment methods as JSON. After a redeploy, import it back to restore and avoid data loss.',
@@ -513,6 +573,36 @@ const ru = {
     themeLight: 'Светлая', themeDark: 'Тёмная', themeOcean: 'Океан', themeForest: 'Лес', themePurple: 'Фиолет',
     botOk: 'Бот в порядке', botFail: 'Ошибка', testOk: 'Тест отправлен', logs: 'Журнал',
     rateTable: 'Курсы валют', rateTip: 'Сегодняшняя стоимость 1 единицы в {base}', updatedAt: 'Обновлено', noRates: 'Нет данных, нажмите «Обновить курсы»'
+  },
+  mcp: {
+    title: 'Интеграция API и MCP',
+    tip: 'Используйте API-токен для подключения EasySub к скриптам, средствам автоматизации или MCP-клиенту.',
+    restBase: 'Адрес REST API', docs: 'Открыть документацию API', disabled: 'Администратор отключил MCP.',
+    endpoint: 'Адрес MCP', transport: 'Транспорт: Streamable HTTP',
+    tokenHint: 'Сначала создайте API-токен в разделе «Безопасность» ниже.', jsonCfg: 'Конфигурация MCP-клиента'
+  },
+  cur: {
+    title: 'Управление валютами',
+    tip: 'Управляйте валютами для подписок и конвертации; базовая валюта системы — {base}.',
+    restore: 'Восстановить валюты по умолчанию', restored: 'Восстановлено валют: {n}',
+    nameZh: 'Название на китайском', nameEn: 'Название на английском', symbol: 'Символ валюты',
+    manualRate: '1 {code} = ? {base}', manualPh: 'Оставьте пустым для автоматического курса',
+    isBase: 'Базовая валюта', custom: 'Своя', up: 'Выше', down: 'Ниже',
+    addFromCatalog: 'Добавить из встроенного каталога', searchPh: 'Поиск по коду, китайскому или английскому названию',
+    pick: 'Выберите валюту для добавления', allAdded: 'Все встроенные валюты уже добавлены',
+    add: 'Добавить', addCustom: 'Добавить свою валюту', code: 'Код валюты',
+    added: 'Добавлена валюта {code}', deleted: 'Удалена валюта {code}',
+    deleteConfirm: 'Удалить валюту {code}?'
+  },
+  pm: {
+    title: 'Способы оплаты',
+    tip: 'Способы оплаты доступны только этому аккаунту и могут содержать счёт и заметку.',
+    restore: 'Восстановить способы по умолчанию', restored: 'Восстановлено способов: {n}',
+    none: 'Способов оплаты пока нет', add: 'Добавить способ оплаты', edit: 'Изменить способ оплаты',
+    name: 'Название', namePh: 'напр. банковская карта', icon: 'Иконка',
+    account: 'Счёт', accountPh: "напр. окончание 1234 / user{'@'}example.com",
+    note: 'Заметка', notePh: 'напр. дата выписки: 10-е число месяца',
+    deleted: 'Способ оплаты удалён', deleteConfirm: 'Удалить способ оплаты «{name}»?'
   },
   backup: {
     title: 'Резервная копия',
