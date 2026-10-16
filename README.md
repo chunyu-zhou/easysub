@@ -36,6 +36,38 @@ docker compose up -d
 
 The application is available directly at `http://your-server-ip:8000`. The `easysub_data` volume is persistent and holds the embedded SQLite database. Do not remove it unless you intentionally want to erase application data. Every `main` push also publishes `latest`, `main`, and a `sha-<commit>` image tag; version tags such as `v2.0.0` publish matching version tags.
 
+### First-run account and security configuration
+
+On an uninitialized database, EasySub creates the administrator account from environment variables. **Set these values before the first start.** Changing `ADMIN_USERNAME`, `ADMIN_PASSWORD`, or `ADMIN_EMAIL` later does not modify an existing account.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ADMIN_USERNAME` | `admin` | First administrator username |
+| `ADMIN_PASSWORD` | `admin123` | First administrator password — change this in production |
+| `ADMIN_EMAIL` | `admin@example.com` | First administrator email address |
+| `JWT_SECRET` | generated and persisted | Secret used to sign access/refresh JWTs and encrypt stored secrets such as WebDAV credentials |
+| `DATA_DIR` | `data` | Persistent directory containing SQLite, uploaded icons, backups, and the generated JWT secret |
+| `SQLITE_PATH` | `easysub.db` | SQLite filename under `DATA_DIR`, or an absolute database path |
+| `LISTEN` | `:8000` | HTTP listener address |
+| `MCP_ENABLED` | `true` | Enables the `/mcp` endpoint |
+
+If `JWT_SECRET` is omitted, EasySub generates a cryptographically random secret and stores it as `DATA_DIR/jwt_secret`. This is safe as long as the whole `DATA_DIR` is persisted. Set an explicit, long random `JWT_SECRET` when managing secrets outside the container. **Do not change it after users have started using the application**: existing login tokens and encrypted WebDAV/notification secrets will no longer be readable.
+
+Example production Compose override:
+
+```yaml
+services:
+  app:
+    environment:
+      ADMIN_USERNAME: easysub-admin
+      ADMIN_PASSWORD: replace-with-a-long-unique-password
+      ADMIN_EMAIL: admin@example.com
+      JWT_SECRET: replace-with-a-long-random-secret
+      DATA_DIR: /app/data
+```
+
+After signing in for the first time, change the administrator password under **Settings → Account**. For a public deployment, place the service behind a TLS-terminating reverse proxy or tunnel; the bundled Compose file intentionally exposes plain HTTP on port `8000` only.
+
 ## Application API and MCP
 
 The Go service embeds the production Vue build and exposes the REST API under `/api`. Create an API token in **Settings → Security** and pass it with the following header:
