@@ -213,7 +213,7 @@ func (s *Server) createPaymentMethod(c *Ctx) (any, error) {
 	}
 	var max int
 	c.DB.Model(&store.PaymentMethod{}).Where("user_id=?", c.User.ID).Select("COALESCE(MAX(sort),-1)").Scan(&max)
-	row := store.PaymentMethod{UserID: &c.User.ID, Name: in.Name, Icon: ptrString(in.Icon, 128), Account: ptrString(in.Account, 255), Note: ptrString(in.Note, 500), Sort: max + 1}
+	row := store.PaymentMethod{UserID: &c.User.ID, Name: in.Name, Icon: ptrString(in.Icon, 512), Account: ptrString(in.Account, 255), Note: ptrString(in.Note, 500), Sort: max + 1}
 	if err := c.DB.Create(&row).Error; err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (s *Server) updatePaymentMethod(c *Ctx) (any, error) {
 		return nil, Err(422, "payment method name is required")
 	}
 	row.Name = in.Name
-	row.Icon = ptrString(in.Icon, 128)
+	row.Icon = ptrString(in.Icon, 512)
 	row.Account = ptrString(in.Account, 255)
 	row.Note = ptrString(in.Note, 500)
 	if err := c.DB.Save(&row).Error; err != nil {

@@ -54,10 +54,14 @@ onBeforeUnmount(() => { clearTimer(); if (observer) observer.disconnect() })
 </script>
 
 <style scoped>
+/* 圆形图标：图片铺满并按圆形裁切，favicon 自带的方形底色/四角不会露出来 */
 .sub-icon { position: relative; width: var(--sz); height: var(--sz); flex-shrink: 0; display: inline-flex; align-items: center;
-  justify-content: center; border-radius: calc(var(--sz) * .26); background: var(--surface);
-  border: 1px solid var(--border); overflow: hidden; }
-img { position: absolute; inset: 12%; width: 76%; height: 76%; object-fit: contain; opacity: 0; }
+  justify-content: center; border-radius: 50%; background: var(--surface-2); overflow: hidden; isolation: isolate; }
+/* 细描边画在图片上层，浅色图标在浅色背景上也有边界 */
+.sub-icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent); }
+img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit;
+  opacity: 0; transition: opacity .2s ease; }
 img.ready { opacity: 1; }
 .glyph { font-size: calc(var(--sz) * .55); line-height: 1; }
 .initial { font-size: calc(var(--sz) * .42); font-weight: 650; color: var(--text-soft); }

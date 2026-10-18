@@ -92,7 +92,8 @@
             <div v-if="s.ipv4"><dt>IPv4</dt><dd class="mono">{{ s.ipv4 }}</dd></div>
             <div v-if="s.ipv6"><dt>IPv6</dt><dd class="mono">{{ s.ipv6 }}</dd></div>
             <div v-if="payName(s)"><dt>{{ t('sub.payment') }}</dt>
-              <dd :title="payOf(s)?.note || null">{{ payName(s) }}
+              <dd :title="payOf(s)?.note || null"><SubIcon v-if="isImg(payOf(s).icon)" class="pay-ico"
+                  :icon="payOf(s).icon" :name="payOf(s).name" :size="16" />{{ payName(s) }}
                 <span v-if="payOf(s)?.account" class="pay-acc mono">{{ payOf(s).account }}</span>
                 <span v-if="payOf(s)?.note" class="pay-note muted">{{ payOf(s).note }}</span>
               </dd></div>
@@ -367,7 +368,8 @@
           <h3 style="margin:0">{{ t('sub.browseTitle') }}</h3>
           <button class="btn ghost sm" @click="showBrowser = false">{{ t('common.close') }}</button>
         </div>
-        <p class="muted" style="font-size:13px;margin-top:0">{{ t('sub.pickHint') }}</p>
+        <p class="muted" style="font-size:13px;margin-top:0">{{ t('sub.pickHint') }}
+          · <router-link to="/settings#services" @click="showBrowser = false; showForm = false">{{ t('sub.manageServices') }}</router-link></p>
         <input v-model="browserQ" :placeholder="t('sub.searchPh')" style="margin-bottom:12px" />
         <div v-for="g in groupedLib" :key="g.key" class="lib-group">
           <div class="lib-group-t">{{ g.label }}</div>
@@ -436,11 +438,13 @@ function toast(msg, type = 'ok') {
 }
 
 function payOf(s) { return methods.value.find((x) => x.id === s.payment_method_id) || null }
+// 付款方式图标可能是 emoji 或图片 URL：纯文本场景（下拉框）只拼接 emoji
+function payGlyph(p) { return p?.icon && !isImg(p.icon) ? p.icon : '' }
 function payName(s) {
   const p = payOf(s)
-  return p ? `${p.icon || ''} ${p.name}`.trim() : ''
+  return p ? `${payGlyph(p)} ${p.name}`.trim() : ''
 }
-function payLabel(p) { return `${p.icon || ''} ${p.name}`.trim() + (p.account ? ` · ${p.account}` : '') }
+function payLabel(p) { return `${payGlyph(p)} ${p.name}`.trim() + (p.account ? ` · ${p.account}` : '') }
 function cycleText(s) {
   const n = s.cycle_count > 1 ? s.cycle_count + ' ' : ''
   return n + t('sub.' + s.cycle)
@@ -836,7 +840,8 @@ onMounted(async () => {
 .cat-line { flex: 1; height: 1px; background: var(--border); }
 
 /* ---------- 订阅卡 ---------- */
-.sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+/* 按屏幕宽度自适应列数（内容区最宽 1680px，大屏可排 5 列） */
+.sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 14px; }
 .sub-card { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 14px;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
   cursor: grab; transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out), border-color .2s; }
@@ -882,6 +887,7 @@ onMounted(async () => {
 .sc-facts dt { color: var(--text-soft); flex-shrink: 0; }
 .sc-facts dd { margin: 0; text-align: right; min-width: 0; overflow-wrap: anywhere; }
 .pay-acc { display: block; font-size: 12px; color: var(--text-soft); }
+.pay-ico { vertical-align: -3px; margin-right: 5px; }
 .pay-note { font-size: 12px; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden; }
 .mono { font-family: var(--mono); font-size: 12px; }

@@ -23,58 +23,12 @@ import (
 	"easysub/internal/config"
 )
 
-type service struct{ Name, Domain, Category string }
-
-// Entry 是图标库清单中的一项。
-type Entry struct {
-	Name          string `json:"name"`
-	Domain        string `json:"domain"`
-	Website       string `json:"website"`
-	Category      string `json:"category"`
-	CategoryLabel string `json:"category_label"`
-	Slug          string `json:"slug"`
-	Icon          string `json:"icon"`
-}
-
 func slugOf(domain string) string {
 	return strings.NewReplacer(".", "_", "/", "_").Replace(domain)
 }
 
-// Manifest 返回图标库清单。
-func Manifest() []Entry {
-	labels := map[string]string{}
-	for _, l := range categoryLabels {
-		labels[l[0]] = l[1]
-	}
-	out := make([]Entry, 0, len(services))
-	for _, s := range services {
-		slug := slugOf(s.Domain)
-		out = append(out, Entry{Name: s.Name, Domain: s.Domain, Website: "https://" + s.Domain,
-			Category: s.Category, CategoryLabel: labels[s.Category], Slug: slug,
-			Icon: "/api/icons/library/" + slug + ".png"})
-	}
-	return out
-}
-
-// WebsiteForName 按服务名匹配官方网站（精确优先，其次包含）。
-func WebsiteForName(name string) string {
-	q := strings.ToLower(strings.TrimSpace(name))
-	if q == "" {
-		return ""
-	}
-	for _, s := range services {
-		if strings.ToLower(s.Name) == q {
-			return "https://" + s.Domain
-		}
-	}
-	for _, s := range services {
-		n := strings.ToLower(s.Name)
-		if strings.Contains(n, q) || strings.Contains(q, n) {
-			return "https://" + s.Domain
-		}
-	}
-	return ""
-}
+// ExtraDomain 解析内置清单之外（用户自定义服务）的 slug；由 server 注入。
+var ExtraDomain func(slug string) string
 
 func domainForSlug(slug string) string {
 	slug = strings.TrimSuffix(slug, ".png")
@@ -82,6 +36,9 @@ func domainForSlug(slug string) string {
 		if slugOf(s.Domain) == slug {
 			return s.Domain
 		}
+	}
+	if ExtraDomain != nil {
+		return ExtraDomain(slug)
 	}
 	return ""
 }

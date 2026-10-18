@@ -178,6 +178,7 @@ func New(ctx context.Context, web fs.FS) *Server {
 	// migrating, and seeding it as soon as the HTTP server is constructed; requests
 	// retain the existing 503 response only if the local filesystem is unavailable.
 	store.ConnectSaved(true)
+	icons.ExtraDomain = serviceDomainForSlug
 
 	s := &Server{mux: http.NewServeMux(), icons: icons.NewLibrary(ctx), web: web}
 	s.routes()

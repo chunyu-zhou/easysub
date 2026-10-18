@@ -1,6 +1,11 @@
 package store
 
-import "time"
+import (
+	"net/url"
+	"regexp"
+	"strings"
+	"time"
+)
 
 // Table and column names retain the upstream shape where practical so exports and API payloads remain compatible.
 
@@ -16,10 +21,10 @@ type User struct {
 	EmailCode        *string    `gorm:"size:16" json:"-"`
 	EmailCodeExpires *time.Time `json:"-"`
 
-	Locale        string          `gorm:"size:8;default:zh" json:"locale"`
-	Theme         string          `gorm:"size:32;default:light" json:"theme"`
-	BaseCurrency  string          `gorm:"size:8;default:CNY" json:"base_currency"`
-	CategoryOrder JSON[[]int]     `json:"category_order"`
+	Locale        string      `gorm:"size:8;default:zh" json:"locale"`
+	Theme         string      `gorm:"size:32;default:light" json:"theme"`
+	BaseCurrency  string      `gorm:"size:8;default:CNY" json:"base_currency"`
+	CategoryOrder JSON[[]int] `json:"category_order"`
 
 	TelegramEnabled  bool    `gorm:"default:false" json:"telegram_enabled"`
 	TelegramBotToken *string `gorm:"size:128" json:"telegram_bot_token"`
@@ -41,6 +46,7 @@ type User struct {
 	// 新增：是否已为该用户初始化个人货币 / 付款方式（首次访问时从默认值复制）
 	CurrenciesSeeded     bool `gorm:"default:false" json:"-"`
 	PaymentMethodsSeeded bool `gorm:"default:false" json:"-"`
+	ServicesSeeded       bool `gorm:"default:false" json:"-"`
 
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -61,7 +67,7 @@ type PaymentMethod struct {
 	ID       int     `gorm:"primaryKey" json:"id"`
 	UserID   *int    `gorm:"index" json:"-"`
 	Name     string  `gorm:"size:64" json:"name"`
-	Icon     *string `gorm:"size:128" json:"icon"`
+	Icon     *string `gorm:"size:512" json:"icon"` // emoji 或图片 URL
 	Account  *string `gorm:"size:255" json:"account"`
 	Note     *string `gorm:"size:500" json:"note"`
 	Sort     int     `gorm:"default:0" json:"sort"`
@@ -85,6 +91,43 @@ type UserCurrency struct {
 }
 
 func (UserCurrency) TableName() string { return "user_currencies" }
+
+// UserService：每个用户自己的服务库（订阅表单的服务联想与按分类浏览），
+// 首次使用时从内置清单复制，之后可增删改。
+type UserService struct {
+	ID       int     `gorm:"primaryKey" json:"id"`
+	UserID   int     `gorm:"index" json:"-"`
+	Name     string  `gorm:"size:128" json:"name"`
+	Website  string  `gorm:"size:512" json:"website"`
+	Domain   string  `gorm:"size:255;index" json:"domain"` // 由 Website 解析，用于图标库取 favicon
+	Category string  `gorm:"size:32" json:"category"`      // 服务分类 key（streaming / ai / ...）
+	Icon     *string `gorm:"size:512" json:"custom_icon"`  // 自定义图标（emoji / URL）；为空时使用 Domain 的 favicon
+	Sort     int     `gorm:"default:0" json:"sort"`
+}
+
+func (UserService) TableName() string { return "user_services" }
+
+var domainRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$`)
+
+// NormalizeDomain 从网址或域名中取出小写主机名；无法识别时返回空串。
+func NormalizeDomain(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	host := strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+	if !domainRe.MatchString(host) {
+		return ""
+	}
+	return host
+}
 
 // LegacyCurrency 是原版的全局货币表，仅在迁移旧数据时读取。
 type LegacyCurrency struct {
@@ -159,10 +202,10 @@ type Bundle struct {
 }
 
 type ApiToken struct {
-	ID         int        `gorm:"primaryKey"`
-	UserID     int        `gorm:"index"`
-	Name       string     `gorm:"size:64"`
-	Token      string     `gorm:"size:64;uniqueIndex"`
+	ID         int    `gorm:"primaryKey"`
+	UserID     int    `gorm:"index"`
+	Name       string `gorm:"size:64"`
+	Token      string `gorm:"size:64;uniqueIndex"`
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 }
@@ -195,7 +238,7 @@ func (NotificationLog) TableName() string { return "notification_log" }
 // AllModels 供 AutoMigrate 使用。
 func AllModels() []any {
 	return []any{
-		&User{}, &Category{}, &PaymentMethod{}, &UserCurrency{}, &ExchangeRate{},
+		&User{}, &Category{}, &PaymentMethod{}, &UserCurrency{}, &UserService{}, &ExchangeRate{},
 		&Bundle{}, &Subscription{}, &ApiToken{}, &ActivityLog{}, &NotificationLog{},
 	}
 }

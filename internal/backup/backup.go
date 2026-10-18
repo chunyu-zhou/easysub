@@ -11,6 +11,7 @@ import (
 
 	"easysub/internal/billing"
 	"easysub/internal/config"
+	"easysub/internal/icons"
 	"easysub/internal/notify"
 	"easysub/internal/store"
 )
@@ -75,9 +76,15 @@ func collect(db *gorm.DB, u *store.User) map[string]any {
 	for _, s := range subs {
 		sOut = append(sOut, subDict(s))
 	}
+	var svcs []store.UserService
+	db.Where("user_id = ?", u.ID).Order("sort, id").Find(&svcs)
+	svcOut := make([]map[string]any, 0, len(svcs))
+	for _, s := range svcs {
+		svcOut = append(svcOut, map[string]any{"name": s.Name, "website": s.Website, "category": s.Category, "icon": s.Icon, "sort": s.Sort})
+	}
 	return map[string]any{
 		"categories": catOut, "payment_methods": pmOut, "bundles": bOut,
-		"currencies": cOut, "subscriptions": sOut,
+		"currencies": cOut, "services": svcOut, "subscriptions": sOut,
 	}
 }
 
@@ -259,7 +266,7 @@ func restoreEntities(tx *gorm.DB, u *store.User, data map[string]any, replace bo
 		}
 		row, ok := existingPMs[name]
 		if !ok {
-			row = &store.PaymentMethod{Name: trunc(name, 64), Icon: strPtr(p, "icon", 128), UserID: &u.ID,
+			row = &store.PaymentMethod{Name: trunc(name, 64), Icon: strPtr(p, "icon", 512), UserID: &u.ID,
 				Account: strPtr(p, "account", 255), Note: strPtr(p, "note", 500), Sort: int(num(p, "sort", 0))}
 			if err := tx.Create(row).Error; err != nil {
 				return 0, err
@@ -325,6 +332,30 @@ func restoreEntities(tx *gorm.DB, u *store.User, data map[string]any, replace bo
 		}
 		if err := tx.Create(&row).Error; err != nil {
 			return 0, err
+		}
+	}
+
+	// 服务库：备份中有而当前没有（按名称）的服务补回；已有的不覆盖
+	if svcIn := list(data, "services"); len(svcIn) > 0 {
+		icons.EnsureUserServices(tx, u)
+		var svcs []store.UserService
+		tx.Where("user_id = ?", u.ID).Find(&svcs)
+		haveSvc := map[string]bool{}
+		for _, s := range svcs {
+			haveSvc[strings.ToLower(s.Name)] = true
+		}
+		for _, s := range svcIn {
+			name := trunc(strings.TrimSpace(str(s, "name")), 128)
+			if name == "" || haveSvc[strings.ToLower(name)] {
+				continue
+			}
+			haveSvc[strings.ToLower(name)] = true
+			website := trunc(str(s, "website"), 512)
+			row := store.UserService{UserID: u.ID, Name: name, Website: website, Domain: store.NormalizeDomain(website),
+				Category: icons.ValidCategory(str(s, "category")), Icon: strPtr(s, "icon", 512), Sort: int(num(s, "sort", 0))}
+			if err := tx.Create(&row).Error; err != nil {
+				return 0, err
+			}
 		}
 	}
 

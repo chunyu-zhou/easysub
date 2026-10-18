@@ -177,7 +177,8 @@ function logout() {
 .credit a > span { display: inline-flex; }
 
 /* ---------- 内容区 ---------- */
-.content { min-width: 0; width: 100%; max-width: 1240px; padding: 32px 40px 56px; }
+/* 大屏下放宽内容区，让订阅卡等网格按屏幕宽度自动增加列数 */
+.content { min-width: 0; width: 100%; max-width: 1680px; padding: 32px 40px 56px; }
 .upd-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 10px 12px 10px 14px;
   border-radius: var(--radius-sm); text-decoration: none; color: var(--text); font-size: 14px;
   background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }

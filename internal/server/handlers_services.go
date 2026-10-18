@@ -19,7 +19,7 @@ import (
 	"easysub/internal/store"
 )
 
-func (s *Server) iconManifest(*Ctx) (any, error) { return icons.Manifest(), nil }
+// iconFromURL / iconUpload 同时返回 path 与 url：前端订阅表单读取 url。
 func (s *Server) iconFromURL(c *Ctx) (any, error) {
 	var in struct {
 		URL string `json:"url"`
@@ -31,7 +31,7 @@ func (s *Server) iconFromURL(c *Ctx) (any, error) {
 	if err != nil {
 		return nil, Err(422, "could not download icon: %v", err)
 	}
-	return map[string]any{"path": path}, nil
+	return map[string]any{"path": path, "url": path}, nil
 }
 func (s *Server) iconUpload(c *Ctx) (any, error) {
 	if err := c.R.ParseMultipartForm(2 << 20); err != nil {
@@ -46,7 +46,7 @@ func (s *Server) iconUpload(c *Ctx) (any, error) {
 	if err != nil {
 		return nil, Err(422, "could not save icon: %v", err)
 	}
-	return map[string]any{"path": path}, nil
+	return map[string]any{"path": path, "url": path}, nil
 }
 
 func (s *Server) exportBackup(c *Ctx) (any, error) { return backup.ExportUser(c.DB, c.User), nil }
@@ -97,9 +97,16 @@ func (s *Server) runLocalBackup(c *Ctx) (any, error) {
 	}
 	return out, nil
 }
+
+// webdavDTO 返回给浏览器的配置：绝不包含密码，仅告知是否已保存。
+func webdavDTO(cfg backup.WebDAVConfig) map[string]any {
+	return map[string]any{"url": cfg.URL, "username": cfg.Username, "path": cfg.Path,
+		"auto_enabled": cfg.AutoEnabled, "keep": cfg.Keep, "scope": cfg.Scope, "has_password": cfg.Password != ""}
+}
+
 func (s *Server) webdavConfig(c *Ctx) (any, error) {
 	cfg, status := backup.LoadWebDAV(c.User)
-	return map[string]any{"config": cfg, "status": status}, nil
+	return map[string]any{"config": webdavDTO(cfg), "last": status}, nil
 }
 func webdavRequest(c *Ctx) (backup.WebDAVConfig, error) {
 	var in backup.WebDAVConfig
@@ -117,7 +124,7 @@ func (s *Server) saveWebDAVConfig(c *Ctx) (any, error) {
 	if err != nil {
 		return nil, Err(422, "could not save WebDAV configuration: %v", err)
 	}
-	return out, nil
+	return map[string]any{"config": webdavDTO(out)}, nil
 }
 func (s *Server) testWebDAV(c *Ctx) (any, error) {
 	in, err := webdavRequest(c)
@@ -147,7 +154,7 @@ func (s *Server) runWebDAVBackup(c *Ctx) (any, error) {
 	if err != nil {
 		return nil, Err(422, "WebDAV backup failed: %v", err)
 	}
-	return row, nil
+	return map[string]any{"file": row.Name, "size": row.Size, "modified": row.Modified}, nil
 }
 func (s *Server) restoreWebDAVBackup(c *Ctx) (any, error) {
 	var in struct {
@@ -161,6 +168,17 @@ func (s *Server) restoreWebDAVBackup(c *Ctx) (any, error) {
 	data, err := backup.ReadRemote(cfg, in.Name)
 	if err != nil {
 		return nil, Err(422, "could not read WebDAV backup: %v", err)
+	}
+	// 管理员以「整站」范围备份的文件需走整站恢复
+	if backup.IsFullBackup(data) {
+		if !c.User.IsAdmin {
+			return nil, Err(403, "整站备份只能由管理员恢复")
+		}
+		res, err := backup.ImportAll(c.DB, data, in.Replace)
+		if err != nil {
+			return nil, Err(422, "could not restore backup: %v", err)
+		}
+		return res, nil
 	}
 	n, err := backup.ImportUser(c.DB, c.User, data, in.Replace)
 	if err != nil {
