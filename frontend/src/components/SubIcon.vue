@@ -54,15 +54,15 @@ onBeforeUnmount(() => { clearTimer(); if (observer) observer.disconnect() })
 </script>
 
 <style scoped>
-/* 圆形图标：图片铺满并按圆形裁切，favicon 自带的方形底色/四角不会露出来 */
-.sub-icon { position: relative; width: var(--sz); height: var(--sz); flex-shrink: 0; display: inline-flex; align-items: center;
-  justify-content: center; border-radius: 50%; background: var(--surface-2); overflow: hidden; isolation: isolate; }
-/* 细描边画在图片上层，浅色图标在浅色背景上也有边界 */
-.sub-icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent); }
-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit;
-  opacity: 0; transition: opacity .2s ease; }
+/* 无边框图标：图片按比例缩放进可视区域（contain，不裁切），并限制最大尺寸，保证图标完整显示 */
+.sub-icon { --box: min(calc(var(--sz) * .84), 48px);
+  position: relative; width: var(--sz); height: var(--sz); flex-shrink: 0; display: inline-flex;
+  align-items: center; justify-content: center; }
+img { position: absolute; top: 50%; left: 50%; width: var(--box); height: var(--box); transform: translate(-50%, -50%);
+  object-fit: contain; border-radius: 22%; opacity: 0; transition: opacity .2s ease; }
 img.ready { opacity: 1; }
-.glyph { font-size: calc(var(--sz) * .55); line-height: 1; }
-.initial { font-size: calc(var(--sz) * .42); font-weight: 650; color: var(--text-soft); }
+.glyph { font-size: min(calc(var(--sz) * .62), 40px); line-height: 1; }
+/* 首字占位：没有图片时用浅色圆底，避免字母悬空 */
+.initial { display: inline-flex; align-items: center; justify-content: center; width: var(--box); height: var(--box);
+  border-radius: 50%; background: var(--surface-2); font-size: calc(var(--sz) * .4); font-weight: 650; color: var(--text-soft); }
 </style>

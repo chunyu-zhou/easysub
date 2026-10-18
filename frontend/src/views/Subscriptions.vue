@@ -92,10 +92,10 @@
             <div v-if="s.ipv4"><dt>IPv4</dt><dd class="mono">{{ s.ipv4 }}</dd></div>
             <div v-if="s.ipv6"><dt>IPv6</dt><dd class="mono">{{ s.ipv6 }}</dd></div>
             <div v-if="payName(s)"><dt>{{ t('sub.payment') }}</dt>
-              <dd :title="payOf(s)?.note || null"><SubIcon v-if="isImg(payOf(s).icon)" class="pay-ico"
+              <dd :title="accOf(s)?.note || null"><SubIcon v-if="isImg(payOf(s).icon)" class="pay-ico"
                   :icon="payOf(s).icon" :name="payOf(s).name" :size="16" />{{ payName(s) }}
-                <span v-if="payOf(s)?.account" class="pay-acc mono">{{ payOf(s).account }}</span>
-                <span v-if="payOf(s)?.note" class="pay-note muted">{{ payOf(s).note }}</span>
+                <span v-if="accOf(s)?.account" class="pay-acc mono">{{ accOf(s).account }}</span>
+                <span v-if="accOf(s)?.note" class="pay-note muted">{{ accOf(s).note }}</span>
               </dd></div>
             <div v-if="s.billing_type === 'recurring'"><dt>{{ t('sub.autoRenew') }}</dt>
               <dd><span class="i yn" :class="{ on: s.auto_renew }" v-html="icon(s.auto_renew ? 'check' : 'x')"></span></dd></div>
@@ -305,12 +305,20 @@
             </div>
             <div style="flex:1">
               <label>{{ t('sub.payment') }}</label>
-              <select v-model="form.payment_method_id">
+              <select v-model="form.payment_method_id" @change="onPayMethodChange">
                 <option :value="null">—</option>
                 <option v-for="p in methods" :key="p.id" :value="p.id">{{ payLabel(p) }}</option>
               </select>
             </div>
           </div>
+          <!-- 选择付款方式后再选具体账号（该付款方式有账号时显示） -->
+          <template v-if="formAccounts.length">
+            <label>{{ t('sub.payAccount') }}</label>
+            <select v-model="form.payment_account_id">
+              <option :value="null">{{ t('sub.payAccountNone') }}</option>
+              <option v-for="a in formAccounts" :key="a.id" :value="a.id">{{ accLabel(a) }}</option>
+            </select>
+          </template>
         </div>
 
         <div class="block">
@@ -444,7 +452,19 @@ function payName(s) {
   const p = payOf(s)
   return p ? `${payGlyph(p)} ${p.name}`.trim() : ''
 }
-function payLabel(p) { return `${payGlyph(p)} ${p.name}`.trim() + (p.account ? ` · ${p.account}` : '') }
+function payLabel(p) {
+  const n = p.accounts?.length || 0
+  return `${payGlyph(p)} ${p.name}`.trim() + (n > 1 ? ` (${t('sub.payAccountCount', { n })})` : '')
+}
+function accOf(s) { return payOf(s)?.accounts?.find((a) => a.id === s.payment_account_id) || null }
+function accLabel(a) { return [a.account, a.note].filter(Boolean).join(' · ') }
+// 表单中当前付款方式的账号列表
+const formAccounts = computed(() => methods.value.find((x) => x.id === form.value.payment_method_id)?.accounts || [])
+// 切换付款方式：只有一个账号时自动选中，否则清空让用户选择
+function onPayMethodChange() {
+  const list = formAccounts.value
+  form.value.payment_account_id = list.length === 1 ? list[0].id : null
+}
 function cycleText(s) {
   const n = s.cycle_count > 1 ? s.cycle_count + ' ' : ''
   return n + t('sub.' + s.cycle)
@@ -487,7 +507,7 @@ function toISO(d) {
 function blank() {
   return {
     id: null, name: '', plan: '', icon: '', amount: 0, currency: 'CNY',
-    category_id: null, payment_method_id: null, bundle_id: null, billing_type: 'recurring',
+    category_id: null, payment_method_id: null, payment_account_id: null, bundle_id: null, billing_type: 'recurring',
     cycle: 'month', cycle_count: 1, start_date: new Date().toISOString().slice(0, 10),
     next_renewal_date: '', end_date: null, url: '', notes: '', remark: '', ipv4: '', ipv6: '',
     remind_days_before: '7,6,5,4,3,2,1', auto_renew: true, is_active: true,

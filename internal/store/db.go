@@ -234,7 +234,45 @@ func ConnectSaved(force bool) bool {
 
 // Migrate 自动建表 / 补列（只增不删，幂等）。
 func Migrate(g *gorm.DB) error {
-	return g.AutoMigrate(AllModels()...)
+	if err := g.AutoMigrate(AllModels()...); err != nil {
+		return err
+	}
+	return migratePaymentAccounts(g)
+}
+
+// migratePaymentAccounts 把旧版「付款方式上的单个账号 / 备注」迁移为该付款方式的第一个账号，
+// 并让引用该付款方式的订阅指向这个账号。迁移后清空旧字段，因此可重复执行。
+func migratePaymentAccounts(g *gorm.DB) error {
+	var legacy []PaymentMethod
+	if err := g.Where("user_id IS NOT NULL AND ((account IS NOT NULL AND account <> '') OR (note IS NOT NULL AND note <> ''))").
+		Find(&legacy).Error; err != nil {
+		return err
+	}
+	for _, pm := range legacy {
+		err := g.Transaction(func(tx *gorm.DB) error {
+			acc := PaymentAccount{UserID: *pm.UserID, PaymentMethodID: pm.ID}
+			if pm.Account != nil {
+				acc.Account = *pm.Account
+			}
+			if pm.Note != nil {
+				acc.Note = *pm.Note
+			}
+			if err := tx.Create(&acc).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&Subscription{}).
+				Where("user_id = ? AND payment_method_id = ? AND payment_account_id IS NULL", *pm.UserID, pm.ID).
+				Update("payment_account_id", acc.ID).Error; err != nil {
+				return err
+			}
+			return tx.Model(&PaymentMethod{}).Where("id = ?", pm.ID).
+				Updates(map[string]any{"account": nil, "note": nil}).Error
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SeedAll 写入系统预置分类与首个管理员。货币与付款方式按用户在首次访问时初始化。

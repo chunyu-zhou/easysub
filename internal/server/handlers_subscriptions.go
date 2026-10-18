@@ -28,6 +28,7 @@ type subscriptionInput struct {
 	IPv6             *string     `json:"ipv6"`
 	CategoryID       *int        `json:"category_id"`
 	PaymentMethodID  *int        `json:"payment_method_id"`
+	PaymentAccountID *int        `json:"payment_account_id"`
 	BundleID         *int        `json:"bundle_id"`
 	Amount           float64     `json:"amount"`
 	Currency         string      `json:"currency"`
@@ -119,6 +120,17 @@ func (s *Server) validateSubscription(c *Ctx, in *subscriptionInput) error {
 			return Err(422, "payment method not found")
 		}
 	}
+	if in.PaymentAccountID != nil {
+		if in.PaymentMethodID == nil {
+			in.PaymentAccountID = nil
+		} else {
+			var acc store.PaymentAccount
+			if err := c.DB.Where("id = ? AND user_id = ? AND payment_method_id = ?", *in.PaymentAccountID, c.User.ID, *in.PaymentMethodID).
+				First(&acc).Error; err != nil {
+				return Err(422, "payment account not found")
+			}
+		}
+	}
 	if in.BundleID != nil {
 		var bundle store.Bundle
 		if err := c.DB.Where("id = ? AND user_id = ?", *in.BundleID, c.User.ID).First(&bundle).Error; err != nil {
@@ -129,7 +141,7 @@ func (s *Server) validateSubscription(c *Ctx, in *subscriptionInput) error {
 }
 
 func subscriptionFrom(in *subscriptionInput, old *store.Subscription) store.Subscription {
-	out := store.Subscription{Name: in.Name, Plan: ptrString(in.Plan, 128), Icon: ptrString(in.Icon, 512), URL: ptrString(in.URL, 512), Notes: ptrString(in.Notes, 100000), Remark: ptrString(in.Remark, 255), IPv4: ptrString(in.IPv4, 64), IPv6: ptrString(in.IPv6, 64), CategoryID: in.CategoryID, PaymentMethodID: in.PaymentMethodID, BundleID: in.BundleID, Amount: in.Amount, Currency: in.Currency, BillingType: in.BillingType, Cycle: in.Cycle, CycleCount: in.CycleCount, StartDate: in.StartDate, NextRenewalDate: in.NextRenewalDate, EndDate: in.EndDate, TrialEnd: in.TrialEnd, CancelBy: in.CancelBy, CardLast4: ptrString(in.CardLast4, 8), CardExpiry: ptrString(in.CardExpiry, 8), FamilyMembers: store.JSONOf(in.FamilyMembers), RemindDaysBefore: strings.TrimSpace(in.RemindDaysBefore)}
+	out := store.Subscription{Name: in.Name, Plan: ptrString(in.Plan, 128), Icon: ptrString(in.Icon, 512), URL: ptrString(in.URL, 512), Notes: ptrString(in.Notes, 100000), Remark: ptrString(in.Remark, 255), IPv4: ptrString(in.IPv4, 64), IPv6: ptrString(in.IPv6, 64), CategoryID: in.CategoryID, PaymentMethodID: in.PaymentMethodID, PaymentAccountID: in.PaymentAccountID, BundleID: in.BundleID, Amount: in.Amount, Currency: in.Currency, BillingType: in.BillingType, Cycle: in.Cycle, CycleCount: in.CycleCount, StartDate: in.StartDate, NextRenewalDate: in.NextRenewalDate, EndDate: in.EndDate, TrialEnd: in.TrialEnd, CancelBy: in.CancelBy, CardLast4: ptrString(in.CardLast4, 8), CardExpiry: ptrString(in.CardExpiry, 8), FamilyMembers: store.JSONOf(in.FamilyMembers), RemindDaysBefore: strings.TrimSpace(in.RemindDaysBefore)}
 	if out.RemindDaysBefore == "" {
 		out.RemindDaysBefore = "7,6,5,4,3,2,1"
 	}
@@ -158,7 +170,7 @@ func subscriptionFrom(in *subscriptionInput, old *store.Subscription) store.Subs
 }
 
 func subscriptionDTO(c *Ctx, sub store.Subscription) map[string]any {
-	return map[string]any{"id": sub.ID, "name": sub.Name, "plan": sub.Plan, "icon": sub.Icon, "url": sub.URL, "notes": sub.Notes, "remark": sub.Remark, "ipv4": sub.IPv4, "ipv6": sub.IPv6, "category_id": sub.CategoryID, "payment_method_id": sub.PaymentMethodID, "bundle_id": sub.BundleID, "amount": sub.Amount, "amount_in_base": c.Conv().Convert(sub.Amount, sub.Currency, c.User.BaseCurrency), "currency": sub.Currency, "billing_type": sub.BillingType, "cycle": sub.Cycle, "cycle_count": sub.CycleCount, "start_date": sub.StartDate, "next_renewal_date": sub.NextRenewalDate, "end_date": sub.EndDate, "last_renewed_at": sub.LastRenewedAt, "trial_end": sub.TrialEnd, "cancel_by": sub.CancelBy, "card_last4": sub.CardLast4, "card_expiry": sub.CardExpiry, "is_active": sub.IsActive, "auto_renew": sub.AutoRenew, "show_in_calendar": sub.ShowInCalendar, "sort": sub.Sort, "family_members": sub.FamilyMembers, "remind_days_before": sub.RemindDaysBefore, "created_at": sub.CreatedAt}
+	return map[string]any{"id": sub.ID, "name": sub.Name, "plan": sub.Plan, "icon": sub.Icon, "url": sub.URL, "notes": sub.Notes, "remark": sub.Remark, "ipv4": sub.IPv4, "ipv6": sub.IPv6, "category_id": sub.CategoryID, "payment_method_id": sub.PaymentMethodID, "payment_account_id": sub.PaymentAccountID, "bundle_id": sub.BundleID, "amount": sub.Amount, "amount_in_base": c.Conv().Convert(sub.Amount, sub.Currency, c.User.BaseCurrency), "currency": sub.Currency, "billing_type": sub.BillingType, "cycle": sub.Cycle, "cycle_count": sub.CycleCount, "start_date": sub.StartDate, "next_renewal_date": sub.NextRenewalDate, "end_date": sub.EndDate, "last_renewed_at": sub.LastRenewedAt, "trial_end": sub.TrialEnd, "cancel_by": sub.CancelBy, "card_last4": sub.CardLast4, "card_expiry": sub.CardExpiry, "is_active": sub.IsActive, "auto_renew": sub.AutoRenew, "show_in_calendar": sub.ShowInCalendar, "sort": sub.Sort, "family_members": sub.FamilyMembers, "remind_days_before": sub.RemindDaysBefore, "created_at": sub.CreatedAt}
 }
 
 func (s *Server) listSubscriptions(c *Ctx) (any, error) {

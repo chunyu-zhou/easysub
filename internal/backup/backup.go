@@ -25,8 +25,9 @@ func subDict(s store.Subscription) map[string]any {
 	return map[string]any{
 		"name": s.Name, "plan": s.Plan, "icon": s.Icon, "url": s.URL, "notes": s.Notes,
 		"remark": s.Remark, "ipv4": s.IPv4, "ipv6": s.IPv6,
-		"category_id": s.CategoryID, "payment_method_id": s.PaymentMethodID, "bundle_id": s.BundleID,
-		"amount": s.Amount, "currency": s.Currency, "billing_type": s.BillingType,
+		"category_id": s.CategoryID, "payment_method_id": s.PaymentMethodID, "payment_account_id": s.PaymentAccountID,
+		"bundle_id": s.BundleID,
+		"amount":    s.Amount, "currency": s.Currency, "billing_type": s.BillingType,
 		"cycle": s.Cycle, "cycle_count": s.CycleCount,
 		"start_date": s.StartDate.String(), "next_renewal_date": s.NextRenewalDate,
 		"end_date": s.EndDate, "last_renewed_at": s.LastRenewedAt,
@@ -60,9 +61,19 @@ func collect(db *gorm.DB, u *store.User) map[string]any {
 	for _, c := range cats {
 		catOut = append(catOut, map[string]any{"id": c.ID, "name": c.Name, "icon": c.Icon, "color": c.Color, "sort": c.Sort, "is_system": c.IsSystem})
 	}
+	var accs []store.PaymentAccount
+	db.Where("user_id = ?", u.ID).Order("sort, id").Find(&accs)
+	accByPM := map[int][]map[string]any{}
+	for _, a := range accs {
+		accByPM[a.PaymentMethodID] = append(accByPM[a.PaymentMethodID], map[string]any{"id": a.ID, "account": a.Account, "note": a.Note, "sort": a.Sort})
+	}
 	pmOut := make([]map[string]any, 0, len(pms))
 	for _, p := range pms {
-		pmOut = append(pmOut, map[string]any{"id": p.ID, "name": p.Name, "icon": p.Icon, "account": p.Account, "note": p.Note, "sort": p.Sort, "is_system": false})
+		list := accByPM[p.ID]
+		if list == nil {
+			list = []map[string]any{}
+		}
+		pmOut = append(pmOut, map[string]any{"id": p.ID, "name": p.Name, "icon": p.Icon, "accounts": list, "sort": p.Sort, "is_system": false})
 	}
 	bOut := make([]map[string]any, 0, len(bundles))
 	for _, b := range bundles {
@@ -238,6 +249,7 @@ func restoreEntities(tx *gorm.DB, u *store.User, data map[string]any, replace bo
 	}
 
 	catMap, pmMap, bundleMap := map[int]int{}, map[int]int{}, map[int]int{}
+	legacyAcc := map[int]int{} // 旧版备份：原付款方式 id -> 新建的账号 id
 
 	for _, c := range list(data, "categories") {
 		name := str(c, "name")
@@ -259,6 +271,7 @@ func restoreEntities(tx *gorm.DB, u *store.User, data map[string]any, replace bo
 		}
 	}
 
+	accMap := map[int]int{}
 	for _, p := range list(data, "payment_methods") {
 		name := str(p, "name")
 		if name == "" {
@@ -266,21 +279,53 @@ func restoreEntities(tx *gorm.DB, u *store.User, data map[string]any, replace bo
 		}
 		row, ok := existingPMs[name]
 		if !ok {
-			row = &store.PaymentMethod{Name: trunc(name, 64), Icon: strPtr(p, "icon", 512), UserID: &u.ID,
-				Account: strPtr(p, "account", 255), Note: strPtr(p, "note", 500), Sort: int(num(p, "sort", 0))}
+			row = &store.PaymentMethod{Name: trunc(name, 64), Icon: strPtr(p, "icon", 512), UserID: &u.ID, Sort: int(num(p, "sort", 0))}
 			if err := tx.Create(row).Error; err != nil {
 				return 0, err
 			}
 			existingPMs[name] = row
-		} else if row.Account == nil && row.Note == nil && (str(p, "account") != "" || str(p, "note") != "") {
-			// 同名付款方式：补上备份中的账号 / 备注（不覆盖已填写的内容）
-			row.Account, row.Note = strPtr(p, "account", 255), strPtr(p, "note", 500)
-			if err := tx.Save(row).Error; err != nil {
-				return 0, err
-			}
 		}
 		if old, ok := intKey(p, "id"); ok {
 			pmMap[old] = row.ID
+		}
+		// 账号：新版为 accounts 列表；旧版备份为付款方式上的单个 account / note
+		accIn := list(p, "accounts")
+		if _, isList := p["accounts"].([]any); !isList && (str(p, "account") != "" || str(p, "note") != "") {
+			accIn = []map[string]any{{"account": str(p, "account"), "note": str(p, "note")}}
+		}
+		if len(accIn) == 0 {
+			continue
+		}
+		var have []store.PaymentAccount
+		tx.Where("user_id = ? AND payment_method_id = ?", u.ID, row.ID).Find(&have)
+		type accKey struct{ account, note string }
+		byKey := map[accKey]int{}
+		for _, a := range have {
+			byKey[accKey{a.Account, a.Note}] = a.ID
+		}
+		for i, a := range accIn {
+			acc, note := trunc(str(a, "account"), 255), trunc(str(a, "note"), 500)
+			if acc == "" && note == "" {
+				continue
+			}
+			id, dup := byKey[accKey{acc, note}]
+			if !dup {
+				ar := store.PaymentAccount{UserID: u.ID, PaymentMethodID: row.ID, Account: acc, Note: note, Sort: len(have) + i}
+				if err := tx.Create(&ar).Error; err != nil {
+					return 0, err
+				}
+				id = ar.ID
+				byKey[accKey{acc, note}] = id
+			}
+			if old, ok := intKey(a, "id"); ok {
+				accMap[old] = id
+			}
+			// 旧版备份没有账号 id：用付款方式 id 作为键，供订阅映射
+			if _, ok := intKey(a, "id"); !ok {
+				if old, ok := intKey(p, "id"); ok {
+					legacyAcc[old] = id
+				}
+			}
 		}
 	}
 
@@ -383,8 +428,9 @@ func restoreEntities(tx *gorm.DB, u *store.User, data map[string]any, replace bo
 			URL: strPtr(s, "url", 512), Remark: strPtr(s, "remark", 255),
 			IPv4: strPtr(s, "ipv4", 64), IPv6: strPtr(s, "ipv6", 64),
 			CategoryID: mapRef(s, "category_id", catMap), PaymentMethodID: mapRef(s, "payment_method_id", pmMap),
-			BundleID: mapRef(s, "bundle_id", bundleMap),
-			Amount:   num(s, "amount", 0), Currency: trunc(currency, 16), BillingType: billingType,
+			PaymentAccountID: mapRef(s, "payment_account_id", accMap),
+			BundleID:         mapRef(s, "bundle_id", bundleMap),
+			Amount:           num(s, "amount", 0), Currency: trunc(currency, 16), BillingType: billingType,
 			Cycle: str(s, "cycle"), CycleCount: int(num(s, "cycle_count", 1)), StartDate: start,
 			NextRenewalDate: store.ParseDatePtr(str(s, "next_renewal_date")),
 			EndDate:         store.ParseDatePtr(str(s, "end_date")),
@@ -407,6 +453,11 @@ func restoreEntities(tx *gorm.DB, u *store.User, data map[string]any, replace bo
 				}
 			}
 			sub.FamilyMembers = store.JSONOf(fm)
+		}
+		if sub.PaymentAccountID == nil && sub.PaymentMethodID != nil {
+			if _, hasAcc := s["payment_account_id"]; !hasAcc {
+				sub.PaymentAccountID = mapRef(s, "payment_method_id", legacyAcc)
+			}
 		}
 		if sub.Cycle == "" {
 			sub.Cycle = "month"

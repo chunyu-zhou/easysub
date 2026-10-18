@@ -74,6 +74,16 @@ type PaymentMethod struct {
 	IsSystem bool    `gorm:"default:false" json:"is_system"`
 }
 
+// PaymentAccount：付款方式下的具体账号（一个付款方式可有多个，如多个支付宝账号）。
+type PaymentAccount struct {
+	ID              int    `gorm:"primaryKey" json:"id"`
+	UserID          int    `gorm:"index" json:"-"`
+	PaymentMethodID int    `gorm:"index" json:"payment_method_id"`
+	Account         string `gorm:"size:255" json:"account"`
+	Note            string `gorm:"size:500" json:"note"`
+	Sort            int    `gorm:"default:0" json:"sort"`
+}
+
 // UserCurrency：每个用户自己的货币清单（可增删），初始化时写入默认的 21 种常用货币。
 type UserCurrency struct {
 	ID     int    `gorm:"primaryKey" json:"id"`
@@ -163,7 +173,9 @@ type Subscription struct {
 
 	CategoryID      *int `json:"category_id"`
 	PaymentMethodID *int `json:"payment_method_id"`
-	BundleID        *int `json:"bundle_id"`
+	// 付款方式下的具体账号（如某个支付宝账号）；为空表示未指定
+	PaymentAccountID *int `json:"payment_account_id"`
+	BundleID         *int `json:"bundle_id"`
 
 	Amount   float64 `gorm:"type:double;default:0" json:"amount"`
 	Currency string  `gorm:"size:16;default:CNY" json:"currency"`
@@ -238,7 +250,7 @@ func (NotificationLog) TableName() string { return "notification_log" }
 // AllModels 供 AutoMigrate 使用。
 func AllModels() []any {
 	return []any{
-		&User{}, &Category{}, &PaymentMethod{}, &UserCurrency{}, &UserService{}, &ExchangeRate{},
+		&User{}, &Category{}, &PaymentMethod{}, &PaymentAccount{}, &UserCurrency{}, &UserService{}, &ExchangeRate{},
 		&Bundle{}, &Subscription{}, &ApiToken{}, &ActivityLog{}, &NotificationLog{},
 	}
 }

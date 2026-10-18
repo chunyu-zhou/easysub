@@ -428,7 +428,10 @@ func BuildReminderText(db *gorm.DB, sub *store.Subscription, u *store.User, days
 		var pm store.PaymentMethod
 		if db.First(&pm, *sub.PaymentMethodID).Error == nil {
 			line := "💳 付款：" + escapeMD(pm.Name)
-			if pm.Account != nil && *pm.Account != "" {
+			var acc store.PaymentAccount
+			if sub.PaymentAccountID != nil && db.First(&acc, *sub.PaymentAccountID).Error == nil && acc.Account != "" {
+				line += "（" + escapeMD(acc.Account) + "）"
+			} else if pm.Account != nil && *pm.Account != "" {
 				line += "（" + escapeMD(*pm.Account) + "）"
 			}
 			lines = append(lines, line)

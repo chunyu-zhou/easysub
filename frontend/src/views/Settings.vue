@@ -272,11 +272,16 @@
             <SubIcon :icon="p.icon" :name="p.name" :size="38" />
             <div class="pm-main">
               <b class="pm-name">{{ p.name }}</b>
-              <span v-if="p.account" class="pm-acc">
-                <code class="mono-s">{{ p.account }}</code>
-                <button class="btn ghost sm icon xs" :title="t('cal.copy')" :aria-label="t('cal.copy')" @click="copyText(p.account, 'pm')"><span v-html="icon('note')"></span></button>
-              </span>
-              <span v-if="p.note" class="muted pm-note">{{ p.note }}</span>
+              <ul v-if="p.accounts.length" class="pm-accs">
+                <li v-for="a in p.accounts" :key="a.id">
+                  <span v-if="a.account" class="pm-acc">
+                    <code class="mono-s" :title="a.account">{{ a.account }}</code>
+                    <button class="btn ghost sm icon xs" :title="t('cal.copy')" :aria-label="t('cal.copy')" @click="copyText(a.account, 'pm')"><span v-html="icon('note')"></span></button>
+                  </span>
+                  <span v-if="a.note" class="muted pm-note">{{ a.note }}</span>
+                </li>
+              </ul>
+              <span v-else class="muted pm-note">{{ t('pm.noAccounts') }}</span>
             </div>
             <div class="il-acts col">
               <button class="btn ghost sm icon" :title="t('sub.edit')" :aria-label="t('sub.edit')" @click="editMethod(p)"><span v-html="icon('edit')"></span></button>
@@ -597,10 +602,18 @@
         </div>
         <p class="muted hint">{{ t('pm.iconHint') }}</p>
 
-        <label>{{ t('pm.account') }}</label>
-        <input v-model="pmForm.account" class="mono-s" :placeholder="t('pm.accountPh')" autocomplete="off" />
-        <label>{{ t('pm.note') }}</label>
-        <textarea v-model="pmForm.note" rows="2" :placeholder="t('pm.notePh')"></textarea>
+        <div class="acc-head">
+          <label>{{ t('pm.accounts') }}</label>
+          <button type="button" class="btn ghost sm" @click="addAccountRow"><span v-html="icon('plus')"></span>{{ t('pm.addAccount') }}</button>
+        </div>
+        <p v-if="!pmForm.accounts.length" class="muted hint top">{{ t('pm.accountsHint') }}</p>
+        <div v-for="(a, i) in pmForm.accounts" :key="a.key" class="acc-row">
+          <input v-model="a.account" class="mono-s" :placeholder="t('pm.accountPh')" autocomplete="off" maxlength="255"
+                 :aria-label="t('pm.account') + ' ' + (i + 1)" />
+          <input v-model="a.note" :placeholder="t('pm.notePh')" maxlength="500" :aria-label="t('pm.note') + ' ' + (i + 1)" />
+          <button type="button" class="btn ghost danger sm icon" :title="t('pm.removeAccount')" :aria-label="t('pm.removeAccount')"
+                  @click="pmForm.accounts.splice(i, 1)"><span v-html="icon('x')"></span></button>
+        </div>
 
         <p v-if="pmForm.err" class="msg err"><span class="mi" v-html="icon('alert')"></span><span>{{ pmForm.err }}</span></p>
         <div class="modal-acts">
@@ -1070,7 +1083,11 @@ async function restoreCurrencies() {
 const pms = ref([])
 const pmMsg = ref('')
 const pmOk = ref(false)
-const pmForm = reactive({ show: false, id: null, name: '', icon: '', account: '', note: '', err: '' })
+const pmForm = reactive({ show: false, id: null, name: '', icon: '', accounts: [], err: '' })
+// 账号行：key 仅用于 v-for；id 为已有账号，保存时据此更新而不是新建
+let accKey = 0
+function accRow(a = {}) { return { key: ++accKey, id: a.id || 0, account: a.account || '', note: a.note || '' } }
+function addAccountRow() { pmForm.accounts.push(accRow()) }
 const emojiOpen = ref(false)
 // 图标下拉：常用预设 + 当前付款方式里已经在用的 emoji（URL 图标不列入）
 const EMOJI_PRESETS = ['💳', '🏦', '🏛️', '💰', '💵', '💴', '💶', '💷', '🪙', '₿', '🍎', '🅖', '🅰️', '💬', '🅿️',
@@ -1083,14 +1100,18 @@ function pmNote(ok, m) { pmOk.value = ok; pmMsg.value = m }
 async function loadMethods() { try { pms.value = (await api.get('/api/payment-methods')).data || [] } catch { /* ignore */ } }
 function newMethod() {
   emojiOpen.value = false
-  Object.assign(pmForm, { show: true, id: null, name: '', icon: '', account: '', note: '', err: '' })
+  Object.assign(pmForm, { show: true, id: null, name: '', icon: '', accounts: [accRow()], err: '' })
 }
 function editMethod(p) {
   emojiOpen.value = false
-  Object.assign(pmForm, { show: true, id: p.id, name: p.name || '', icon: p.icon || '', account: p.account || '', note: p.note || '', err: '' })
+  Object.assign(pmForm, { show: true, id: p.id, name: p.name || '', icon: p.icon || '', accounts: (p.accounts || []).map(accRow), err: '' })
 }
 async function saveMethod() {
-  const body = { name: pmForm.name.trim(), icon: pmForm.icon.trim(), account: pmForm.account.trim(), note: pmForm.note.trim() }
+  const body = {
+    name: pmForm.name.trim(), icon: pmForm.icon.trim(),
+    accounts: pmForm.accounts.map((a) => ({ id: a.id, account: a.account.trim(), note: a.note.trim() }))
+      .filter((a) => a.account || a.note)
+  }
   if (!body.name) return
   // 图标只接受 emoji / 短文本，或 http(s) / 站内路径的图片地址
   if (body.icon.includes('://') && !/^https?:\/\//i.test(body.icon)) { pmForm.err = t('pm.iconBad'); return }
@@ -1452,8 +1473,16 @@ hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
 .pm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
 .pm-name { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
 .pm-acc { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
-.pm-acc code { color: var(--text); overflow-wrap: anywhere; }
+.pm-acc { max-width: 100%; }
+.pm-acc code { color: var(--text); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-acc .btn { flex-shrink: 0; }
 .pm-note { font-size: 12px; white-space: pre-line; overflow-wrap: anywhere; }
+.pm-accs { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pm-accs li { display: flex; flex-direction: column; min-width: 0; padding-left: 8px; border-left: 2px solid var(--border); }
+.acc-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.acc-head .btn span { display: inline-flex; }
+.acc-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 8px; }
+.acc-row .btn span { display: inline-flex; }
 .il-acts.col { flex-direction: column; gap: 4px; }
 /* 排序按钮：悬停卡片时出现在左下角，不占布局 */
 .pm-move { position: absolute; left: 8px; bottom: 6px; display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
@@ -1541,6 +1570,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
   .svc-count { margin-left: 0; }
   .icon-field { flex-wrap: wrap; }
   .modal-acts .btn { flex: 1; }
+  .acc-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .acc-row input:nth-child(2) { grid-column: 1; grid-row: 2; }
   .pair { grid-template-columns: minmax(0, 1fr); }
   .btn.sm { min-height: 40px; }
   .btn.sm.icon { width: 40px; }
